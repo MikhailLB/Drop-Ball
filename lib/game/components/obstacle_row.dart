@@ -11,7 +11,7 @@ enum GapType { safe, safe2x, death }
 
 class ObstacleRow extends PositionComponent with HasGameReference<GravityRushGame> {
   final double gapWidth;
-  final double gapPositionX;
+  final double gapCenterX;
   final GapType gapType;
   final bool hasLeftSpike;
   final bool hasRightSpike;
@@ -21,7 +21,7 @@ class ObstacleRow extends PositionComponent with HasGameReference<GravityRushGam
 
   ObstacleRow({
     required this.gapWidth,
-    required this.gapPositionX,
+    required this.gapCenterX,
     required this.gapType,
     this.hasLeftSpike = false,
     this.hasRightSpike = false,
@@ -33,6 +33,8 @@ class ObstacleRow extends PositionComponent with HasGameReference<GravityRushGam
   bool get scored => _scored;
   void markScored() => _scored = true;
 
+  double get gapPositionX => gapCenterX;
+
   static ObstacleRow generate({
     required double screenWidth,
     required double gapWidth,
@@ -41,9 +43,11 @@ class ObstacleRow extends PositionComponent with HasGameReference<GravityRushGam
     required double yPosition,
   }) {
     final rng = Random();
-    final minGapX = gapWidth / 2 + 20;
-    final maxGapX = screenWidth - gapWidth / 2 - 20;
-    final gapX = minGapX + rng.nextDouble() * (maxGapX - minGapX);
+
+    final pipeW = GameConstants.pipeWidth;
+    final minGapX = pipeW + gapWidth / 2 + 5;
+    final maxGapX = screenWidth - pipeW - gapWidth / 2 - 5;
+    final gapX = minGapX + rng.nextDouble() * (maxGapX - minGapX).clamp(0, double.infinity);
 
     GapType type;
     if (rng.nextDouble() < redPipeChance) {
@@ -54,15 +58,12 @@ class ObstacleRow extends PositionComponent with HasGameReference<GravityRushGam
       type = GapType.safe;
     }
 
-    final hasLeft = rng.nextDouble() < spikeChance;
-    final hasRight = rng.nextDouble() < spikeChance;
-
     return ObstacleRow(
       gapWidth: gapWidth,
-      gapPositionX: gapX,
+      gapCenterX: gapX,
       gapType: type,
-      hasLeftSpike: hasLeft,
-      hasRightSpike: hasRight,
+      hasLeftSpike: rng.nextDouble() < spikeChance,
+      hasRightSpike: rng.nextDouble() < spikeChance,
       leftSpikeType: rng.nextBool() ? SpikeType.blue : SpikeType.red,
       rightSpikeType: rng.nextBool() ? SpikeType.blue : SpikeType.red,
       position: Vector2(0, yPosition),
@@ -71,57 +72,95 @@ class ObstacleRow extends PositionComponent with HasGameReference<GravityRushGam
 
   @override
   Future<void> onLoad() async {
-    final screenWidth = game.size.x;
-    final pipeHeight = GameConstants.pipeHeight;
-    final gapLeft = gapPositionX - gapWidth / 2;
-    final gapRight = gapPositionX + gapWidth / 2;
+    final cache = game.spriteCache;
+    final screenW = game.size.x;
+    final pipeW = GameConstants.pipeWidth;
+    final pipeH = GameConstants.pipeHeight;
 
-    final pipeType = gapType == GapType.death
-        ? (Random().nextBool() ? PipeType.redWithSkull : PipeType.redWithoutSkull)
-        : PipeType.green;
+    final gapLeft = gapCenterX - gapWidth / 2;
+    final gapRight = gapCenterX + gapWidth / 2;
 
-    if (gapLeft > 0) {
+    final isDeath = gapType == GapType.death;
+    final rng = Random();
+
+    Sprite getPipeSprite() {
+      if (isDeath) {
+        return rng.nextBool() ? cache.redPipeWithSkull : cache.redPipeWithoutSkull;
+      }
+      return cache.greenPipe;
+    }
+
+    // Left side: fill with pipe columns from screen edge to gap
+    double x = 0;
+    while (x + pipeW <= gapLeft) {
       add(Pipe(
-        pipeType: pipeType,
-        position: Vector2(0, 0),
-        size: Vector2(gapLeft, pipeHeight),
+        sprite: getPipeSprite(),
+        position: Vector2(x, 0),
+        size: Vector2(pipeW, pipeH),
+      ));
+      x += pipeW;
+    }
+    if (x < gapLeft) {
+      add(Pipe(
+        sprite: getPipeSprite(),
+        position: Vector2(x, 0),
+        size: Vector2(gapLeft - x, pipeH),
       ));
     }
 
-    if (gapRight < screenWidth) {
+    // Right side: fill with pipe columns from gap to screen edge
+    x = gapRight;
+    while (x + pipeW <= screenW) {
       add(Pipe(
-        pipeType: pipeType,
-        position: Vector2(gapRight, 0),
-        size: Vector2(screenWidth - gapRight, pipeHeight),
+        sprite: getPipeSprite(),
+        position: Vector2(x, 0),
+        size: Vector2(pipeW, pipeH),
+      ));
+      x += pipeW;
+    }
+    if (x < screenW) {
+      add(Pipe(
+        sprite: getPipeSprite(),
+        position: Vector2(x, 0),
+        size: Vector2(screenW - x, pipeH),
       ));
     }
 
-    final markerSize = Vector2.all(gapWidth * 0.5);
-    final markerPos = Vector2(gapPositionX, pipeHeight / 2);
+    // Marker in center of gap
+    final markerS = GameConstants.markerSize;
+    final markerPos = Vector2(gapCenterX, pipeH / 2);
 
-    if (gapType == GapType.death) {
-      add(DeathZone(position: markerPos, size: markerSize));
+    if (isDeath) {
+      add(DeathZone(
+        sprite: cache.circleSkull,
+        position: markerPos,
+        size: Vector2.all(markerS),
+      ));
     } else {
       add(ScoreZone(
         is2x: gapType == GapType.safe2x,
+        sprite: gapType == GapType.safe2x ? cache.circle2x : cache.greenCircle,
         position: markerPos,
-        size: markerSize,
+        size: Vector2.all(markerS),
       ));
     }
 
-    if (hasLeftSpike && gapLeft > GameConstants.spikeWidth + 10) {
+    // Spikes at gap edges
+    final spikeW = GameConstants.spikeWidth;
+    final spikeH = GameConstants.spikeHeight;
+
+    if (hasLeftSpike) {
       add(Spike(
-        spikeType: leftSpikeType,
-        position: Vector2(gapLeft - GameConstants.spikeWidth / 2 - 5, 0),
-        size: Vector2(GameConstants.spikeWidth, GameConstants.spikeHeight),
+        sprite: leftSpikeType == SpikeType.blue ? cache.blueSpike : cache.redSpike,
+        position: Vector2(gapLeft + spikeW / 2 + 2, pipeH - spikeH),
+        size: Vector2(spikeW, spikeH),
       ));
     }
-
-    if (hasRightSpike && (screenWidth - gapRight) > GameConstants.spikeWidth + 10) {
+    if (hasRightSpike) {
       add(Spike(
-        spikeType: rightSpikeType,
-        position: Vector2(gapRight + GameConstants.spikeWidth / 2 + 5, 0),
-        size: Vector2(GameConstants.spikeWidth, GameConstants.spikeHeight),
+        sprite: rightSpikeType == SpikeType.blue ? cache.blueSpike : cache.redSpike,
+        position: Vector2(gapRight - spikeW / 2 - 2, pipeH - spikeH),
+        size: Vector2(spikeW, spikeH),
       ));
     }
   }

@@ -12,12 +12,14 @@ import 'components/scrolling_background.dart';
 import 'components/spike.dart';
 import 'managers/difficulty_manager.dart';
 import 'managers/score_manager.dart';
+import 'sprite_cache.dart';
 
 class GravityRushGame extends FlameGame
     with PanDetector, HasCollisionDetection {
   final SkinData skin;
   final ScoreManager scoreManager = ScoreManager();
   final DifficultyManager difficultyManager = DifficultyManager();
+  final SpriteCache spriteCache = SpriteCache();
 
   late Ball _ball;
   double _nextRowY = 0;
@@ -29,6 +31,7 @@ class GravityRushGame extends FlameGame
 
   @override
   Future<void> onLoad() async {
+    await spriteCache.loadAll(this);
     await scoreManager.loadHighScore();
     await _startGame();
   }
@@ -40,7 +43,7 @@ class GravityRushGame extends FlameGame
 
     add(ScrollingBackground());
 
-    _ball = Ball(skin: skin);
+    _ball = Ball(skin: skin, sprite: spriteCache.getSphere(skin.id));
     add(_ball);
 
     _nextRowY = size.y * 0.6;
@@ -96,8 +99,11 @@ class GravityRushGame extends FlameGame
       }
     }
 
-    while (_nextRowY < rows.fold<double>(0, (max, r) => r.position.y > max ? r.position.y : max) +
-        difficultyManager.rowSpacing * 2) {
+    final furthestRowY = rows.isEmpty
+        ? _nextRowY
+        : rows.fold<double>(0, (max, r) => r.position.y > max ? r.position.y : max);
+
+    while (_nextRowY < furthestRowY + difficultyManager.rowSpacing * 2) {
       _spawnRow();
     }
   }
@@ -116,8 +122,8 @@ class GravityRushGame extends FlameGame
 
       final gapLeft = row.gapPositionX - row.gapWidth / 2;
       final gapRight = row.gapPositionX + row.gapWidth / 2;
-      final inGap = ballCenter.x > gapLeft + ballRadius * 0.5 &&
-          ballCenter.x < gapRight - ballRadius * 0.5;
+      final inGap = ballCenter.x > gapLeft + ballRadius * 0.3 &&
+          ballCenter.x < gapRight - ballRadius * 0.3;
 
       if (!inGap) {
         gameOver();

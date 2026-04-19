@@ -15,7 +15,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   VideoPlayerController? _videoController;
   int _barState = 0;
   bool _videoReady = false;
-  bool _barImagesCached = false;
+  bool _showBar = false;
   bool _started = false;
 
   static const _barAssets = [
@@ -35,22 +35,23 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   Future<void> _start() async {
-    await _precacheBarImages();
-    if (!mounted) return;
-    setState(() => _barImagesCached = true);
+    // 1. Init and start video first
+    await _initVideo();
 
-    _initVideo();
-    _runLoadingSequence();
-  }
-
-  Future<void> _precacheBarImages() async {
+    // 2. Precache loading bar images
     for (final path in _barAssets) {
       if (!mounted) return;
       await precacheImage(AssetImage(path), context);
     }
+    if (!mounted) return;
+    setState(() => _showBar = true);
+
+    // 3. Load game assets with bar progress
+    await _runLoadingSequence();
   }
 
   Future<void> _initVideo() async {
+    if (!mounted) return;
     final size = MediaQuery.of(context).size;
     final isLandscape = size.width > size.height;
 
@@ -69,7 +70,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
   Future<void> _runLoadingSequence() async {
     final gameImages = AssetPaths.allImages;
-    final totalSteps = gameImages.length;
+    final total = gameImages.length;
     int loaded = 0;
 
     for (final path in gameImages) {
@@ -79,7 +80,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
       } catch (_) {}
       loaded++;
 
-      final progress = loaded / totalSteps;
+      final progress = loaded / total;
       final newState = progress < 0.25
           ? 0
           : progress < 0.55
@@ -95,7 +96,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
 
     if (mounted) {
       setState(() => _barState = 3);
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(const Duration(milliseconds: 600));
       if (mounted) widget.onLoadingComplete();
     }
   }
@@ -122,7 +123,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 child: VideoPlayer(_videoController!),
               ),
             ),
-          if (_barImagesCached)
+          if (_showBar)
             Positioned(
               bottom: 60,
               left: 0,

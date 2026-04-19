@@ -11,15 +11,15 @@ class Ball extends SpriteComponent
   final SkinData skin;
   late BallParticleEmitter _particleEmitter;
 
-  Ball({required this.skin})
+  Ball({required this.skin, required Sprite sprite})
       : super(
+          sprite: sprite,
           size: Vector2.all(GameConstants.ballSize),
           anchor: Anchor.center,
         );
 
   @override
   Future<void> onLoad() async {
-    sprite = await game.loadSprite(skin.assetPath.replaceFirst('assets/', ''));
     position = Vector2(game.size.x / 2, game.size.y * 0.25);
 
     add(CircleHitbox(
