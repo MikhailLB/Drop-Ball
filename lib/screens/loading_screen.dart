@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import '../utils/asset_paths.dart';
 
@@ -14,22 +13,44 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> {
   VideoPlayerController? _videoController;
-  double _progress = 0;
+  int _barState = 0;
   bool _videoReady = false;
+  bool _barImagesCached = false;
+
+  static const _barAssets = [
+    AssetPaths.loadingBarStart,
+    AssetPaths.loadingBarHalf,
+    AssetPaths.loadingBarAlmostFull,
+    AssetPaths.loadingBarFull,
+  ];
 
   @override
   void initState() {
     super.initState();
+    _start();
+  }
+
+  Future<void> _start() async {
+    await _precacheBarImages();
+    if (!mounted) return;
+    setState(() => _barImagesCached = true);
+
     _initVideo();
-    _loadAssets();
+    _runLoadingSequence();
+  }
+
+  Future<void> _precacheBarImages() async {
+    for (final path in _barAssets) {
+      if (!mounted) return;
+      await precacheImage(AssetImage(path), context);
+    }
   }
 
   Future<void> _initVideo() async {
-    final orientation = MediaQueryData.fromView(
-      WidgetsBinding.instance.platformDispatcher.views.first,
-    ).orientation;
+    final mq = MediaQuery.of(context);
+    final isLandscape = mq.size.width > mq.size.height;
 
-    final videoAsset = orientation == Orientation.landscape
+    final videoAsset = isLandscape
         ? AssetPaths.loadingHorizontal
         : AssetPaths.loadingVertical;
 
@@ -39,41 +60,40 @@ class _LoadingScreenState extends State<LoadingScreen> {
       _videoController!.setLooping(true);
       _videoController!.play();
       if (mounted) setState(() => _videoReady = true);
-    } catch (_) {
-      // Video may fail on some platforms; proceed without it
-    }
+    } catch (_) {}
   }
 
-  Future<void> _loadAssets() async {
-    final totalImages = AssetPaths.allImages.length;
+  Future<void> _runLoadingSequence() async {
+    final gameImages = AssetPaths.allImages;
+    final totalSteps = gameImages.length;
     int loaded = 0;
 
-    for (final path in AssetPaths.allImages) {
+    for (final path in gameImages) {
+      if (!mounted) return;
       try {
-        final bytes = await rootBundle.load(path);
-        await precacheImage(
-          MemoryImage(bytes.buffer.asUint8List()),
-          // ignore: use_build_context_synchronously
-          context,
-        );
-      } catch (_) {
-        // Some assets may not precache; that's OK
-      }
+        await precacheImage(AssetImage(path), context);
+      } catch (_) {}
       loaded++;
-      if (mounted) {
-        setState(() => _progress = loaded / totalImages);
+
+      final progress = loaded / totalSteps;
+      final newState = progress < 0.25
+          ? 0
+          : progress < 0.55
+              ? 1
+              : progress < 0.80
+                  ? 2
+                  : 3;
+
+      if (newState != _barState && mounted) {
+        setState(() => _barState = newState);
       }
     }
 
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (mounted) widget.onLoadingComplete();
-  }
-
-  String get _currentBarAsset {
-    if (_progress < 0.25) return AssetPaths.loadingBarStart;
-    if (_progress < 0.50) return AssetPaths.loadingBarHalf;
-    if (_progress < 0.75) return AssetPaths.loadingBarAlmostFull;
-    return AssetPaths.loadingBarFull;
+    if (mounted) {
+      setState(() => _barState = 3);
+      await Future.delayed(const Duration(milliseconds: 800));
+      if (mounted) widget.onLoadingComplete();
+    }
   }
 
   @override
@@ -98,18 +118,23 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 child: VideoPlayer(_videoController!),
               ),
             ),
-          Positioned(
-            bottom: 60,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Image.asset(
-                _currentBarAsset,
-                width: 250,
-                fit: BoxFit.contain,
+          if (_barImagesCached)
+            Positioned(
+              bottom: 60,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  child: Image.asset(
+                    _barAssets[_barState],
+                    key: ValueKey(_barState),
+                    width: 250,
+                    fit: BoxFit.contain,
+                  ),
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

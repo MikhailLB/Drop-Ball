@@ -23,7 +23,9 @@ class GravityRushGame extends FlameGame
   double _nextRowY = 0;
   bool _isGameOver = false;
 
-  GravityRushGame({required this.skin});
+  GravityRushGame({required this.skin}) {
+    images.prefix = 'assets/';
+  }
 
   @override
   Future<void> onLoad() async {
