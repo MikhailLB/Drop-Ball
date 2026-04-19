@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import '../gravity_rush_game.dart';
 
-class ScrollingBackground extends SpriteComponent with HasGameReference<GravityRushGame> {
+class ScrollingBackground extends PositionComponent with HasGameReference<GravityRushGame> {
   late ui.Image _bgImage;
   late ui.Rect _srcRect;
   double _offset = 0;
@@ -10,8 +10,8 @@ class ScrollingBackground extends SpriteComponent with HasGameReference<GravityR
 
   @override
   Future<void> onLoad() async {
-    final sprite = await game.loadSprite('game_assets/backround_asset.webp');
-    _bgImage = sprite.image;
+    final loadedSprite = await game.loadSprite('game_assets/backround_asset.webp');
+    _bgImage = loadedSprite.image;
     _srcRect = ui.Rect.fromLTWH(0, 0, _bgImage.width.toDouble(), _bgImage.height.toDouble());
     size = game.size;
     _tileHeight = size.y;
@@ -20,7 +20,6 @@ class ScrollingBackground extends SpriteComponent with HasGameReference<GravityR
 
   @override
   void render(ui.Canvas canvas) {
-    super.render(canvas);
     final paint = ui.Paint();
 
     final y1 = _offset % _tileHeight - _tileHeight;
