@@ -1,0 +1,97 @@
+import 'dart:ui';
+import '../utils/asset_paths.dart';
+
+enum SkinTier { basic, common, rare, epic, legendary }
+
+class SkinData {
+  final String id;
+  final String name;
+  final SkinTier tier;
+  final String assetPath;
+  final Color primaryColor;
+  final Color secondaryColor;
+  final int particleDensity;
+  final double particleLifespan;
+  final double particleSpeed;
+  final double glowRadius;
+
+  const SkinData({
+    required this.id,
+    required this.name,
+    required this.tier,
+    required this.assetPath,
+    required this.primaryColor,
+    required this.secondaryColor,
+    required this.particleDensity,
+    required this.particleLifespan,
+    required this.particleSpeed,
+    required this.glowRadius,
+  });
+
+  static const List<SkinData> allSkins = [
+    SkinData(
+      id: 'blue',
+      name: 'Azure',
+      tier: SkinTier.basic,
+      assetPath: AssetPaths.blueSphere,
+      primaryColor: Color(0xFF4FC3F7),
+      secondaryColor: Color(0xFF0288D1),
+      particleDensity: 3,
+      particleLifespan: 0.4,
+      particleSpeed: 30,
+      glowRadius: 0,
+    ),
+    SkinData(
+      id: 'green',
+      name: 'Emerald',
+      tier: SkinTier.common,
+      assetPath: AssetPaths.greenSphere,
+      primaryColor: Color(0xFF66BB6A),
+      secondaryColor: Color(0xFF2E7D32),
+      particleDensity: 6,
+      particleLifespan: 0.6,
+      particleSpeed: 45,
+      glowRadius: 4,
+    ),
+    SkinData(
+      id: 'yellow',
+      name: 'Solar',
+      tier: SkinTier.rare,
+      assetPath: AssetPaths.yellowSphere,
+      primaryColor: Color(0xFFFFEE58),
+      secondaryColor: Color(0xFFFFA000),
+      particleDensity: 10,
+      particleLifespan: 0.8,
+      particleSpeed: 60,
+      glowRadius: 8,
+    ),
+    SkinData(
+      id: 'red',
+      name: 'Inferno',
+      tier: SkinTier.epic,
+      assetPath: AssetPaths.redSphere,
+      primaryColor: Color(0xFFEF5350),
+      secondaryColor: Color(0xFFFF6D00),
+      particleDensity: 15,
+      particleLifespan: 1.0,
+      particleSpeed: 80,
+      glowRadius: 12,
+    ),
+    SkinData(
+      id: 'purple',
+      name: 'Nebula',
+      tier: SkinTier.legendary,
+      assetPath: AssetPaths.purpleSphere,
+      primaryColor: Color(0xFFAB47BC),
+      secondaryColor: Color(0xFF7C4DFF),
+      particleDensity: 22,
+      particleLifespan: 1.3,
+      particleSpeed: 100,
+      glowRadius: 18,
+    ),
+  ];
+
+  static SkinData getById(String id) {
+    return allSkins.firstWhere((s) => s.id == id, orElse: () => allSkins[0]);
+  }
+}
