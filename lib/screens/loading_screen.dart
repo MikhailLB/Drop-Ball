@@ -16,6 +16,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   int _barState = 0;
   bool _videoReady = false;
   bool _barImagesCached = false;
+  bool _started = false;
 
   static const _barAssets = [
     AssetPaths.loadingBarStart,
@@ -25,9 +26,12 @@ class _LoadingScreenState extends State<LoadingScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _start();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_started) {
+      _started = true;
+      _start();
+    }
   }
 
   Future<void> _start() async {
@@ -47,8 +51,8 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   Future<void> _initVideo() async {
-    final mq = MediaQuery.of(context);
-    final isLandscape = mq.size.width > mq.size.height;
+    final size = MediaQuery.of(context).size;
+    final isLandscape = size.width > size.height;
 
     final videoAsset = isLandscape
         ? AssetPaths.loadingHorizontal
