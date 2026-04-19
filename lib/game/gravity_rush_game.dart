@@ -1,33 +1,37 @@
-import 'dart:ui' show Color, Offset, FontWeight;
+import 'dart:ui' show Canvas, Color, Offset, FontWeight, Paint;
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart' show TextStyle, Shadow;
 import '../models/skin_data.dart';
 import '../utils/constants.dart';
-import 'components/ball.dart';
-import 'components/obstacle_row.dart';
-import 'components/score_indicator.dart';
-import 'components/scrolling_background.dart';
-import 'components/spike.dart';
+import 'components/peg_board.dart';
+import 'components/plinko_ball.dart';
 import 'managers/difficulty_manager.dart';
 import 'managers/score_manager.dart';
 import 'sprite_cache.dart';
 
-class GravityRushGame extends FlameGame
-    with PanDetector, HasCollisionDetection {
+class GravityRushGame extends FlameGame with TapCallbacks {
   final SkinData skin;
   final ScoreManager scoreManager = ScoreManager();
   final DifficultyManager difficultyManager = DifficultyManager();
   final SpriteCache spriteCache = SpriteCache();
 
-  late Ball _ball;
-  double _nextRowY = 0;
+  late PegBoard _board;
+  PlinkoBall? _activeBall;
+  _BallTrail? _trail;
   bool _isGameOver = false;
+  bool _waitingForTap = true;
+  double _cooldownTimer = 0;
+  bool _inCooldown = false;
+  TextComponent? _tapHint;
 
   GravityRushGame({required this.skin}) {
     images.prefix = 'assets/';
   }
+
+  @override
+  Color backgroundColor() => const Color(0xFF080818);
 
   @override
   Future<void> onLoad() async {
@@ -38,118 +42,125 @@ class GravityRushGame extends FlameGame
 
   Future<void> _startGame() async {
     _isGameOver = false;
+    _waitingForTap = true;
+    _inCooldown = false;
     scoreManager.reset();
     difficultyManager.reset();
 
-    add(ScrollingBackground());
+    _board = PegBoard();
+    add(_board);
 
-    _ball = Ball(skin: skin, sprite: spriteCache.getSphere(skin.id));
-    add(_ball);
-
-    _nextRowY = size.y * 0.6;
-    _spawnInitialRows();
+    _trail = _BallTrail(skin: skin);
+    add(_trail!);
 
     add(_ScoreDisplay());
+    _showTapHint();
   }
 
-  void _spawnInitialRows() {
-    for (int i = 0; i < 4; i++) {
-      _spawnRow();
-    }
-  }
-
-  void _spawnRow() {
-    final row = ObstacleRow.generate(
-      screenWidth: size.x,
-      gapWidth: difficultyManager.gapWidth,
-      redPipeChance: difficultyManager.redPipeChance,
-      spikeChance: difficultyManager.spikeChance,
-      yPosition: _nextRowY,
+  void _showTapHint() {
+    _tapHint?.removeFromParent();
+    _tapHint = TextComponent(
+      text: 'TAP TO DROP',
+      position: Vector2(size.x / 2, size.y * 0.06),
+      anchor: Anchor.center,
+      priority: 50,
+      textRenderer: TextPaint(
+        style: const TextStyle(
+          color: Color(0x99FFFFFF),
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 3,
+        ),
+      ),
     );
-    add(row);
-    _nextRowY += difficultyManager.rowSpacing;
+    add(_tapHint!);
+  }
+
+  @override
+  void onTapDown(TapDownEvent event) {
+    if (_isGameOver || !_waitingForTap || _inCooldown || paused) return;
+
+    _waitingForTap = false;
+    _tapHint?.removeFromParent();
+    _tapHint = null;
+
+    final tapX = event.canvasPosition.x;
+    final margin = size.x * GameConstants.boardMarginFraction;
+    final dropX = tapX.clamp(
+      margin + GameConstants.ballRadius,
+      size.x - margin - GameConstants.ballRadius,
+    );
+
+    _dropBall(dropX);
+  }
+
+  void _dropBall(double x) {
+    final dropY = size.y * GameConstants.boardTopFraction - GameConstants.ballRadius;
+    _activeBall = PlinkoBall(
+      sprite: spriteCache.getSphere(skin.id),
+      startPosition: Vector2(x, dropY),
+      pegs: _board.pegs,
+      pegRadius: _board.actualPegRadius,
+      onLanded: _onBallLanded,
+      slotsY: _board.slotsY,
+      screenWidth: size.x,
+    );
+    add(_activeBall!);
+    _trail?.ball = _activeBall;
+    _trail?.clearTrail();
+  }
+
+  void _onBallLanded(double x) {
+    final slotIndex = _board.getSlotIndex(x);
+    final slotType = _board.slots[slotIndex];
+
+    _trail?.ball = null;
+
+    if (slotType == SlotType.skull) {
+      gameOver();
+      return;
+    }
+
+    final points = slotType == SlotType.score2x
+        ? GameConstants.score2x
+        : GameConstants.baseScore;
+    scoreManager.addScore(points);
+    add(_ScorePopup(
+      text: '+$points',
+      position: Vector2(x, _board.slotsY - 20),
+      color: slotType == SlotType.score2x
+          ? const Color(0xFFFFD700)
+          : const Color(0xFF00FF00),
+    ));
+
+    _activeBall?.removeFromParent();
+    _activeBall = null;
+
+    difficultyManager.onDrop();
+    if (difficultyManager.tierChanged) {
+      _board.generateSlots(
+        skullCount: difficultyManager.skullCount,
+        bonus2xCount: difficultyManager.bonus2xCount,
+      );
+    }
+
+    _inCooldown = true;
+    _cooldownTimer = 0.5;
   }
 
   @override
   void update(double dt) {
-    if (_isGameOver) return;
     super.update(dt);
-    _checkCollisions();
-    _manageRows();
-  }
-
-  void _manageRows() {
-    final rows = children.whereType<ObstacleRow>().toList();
-
-    for (final row in rows) {
-      if (!row.scored && row.position.y + GameConstants.pipeHeight < _ball.position.y) {
-        row.markScored();
-        difficultyManager.onRowPassed();
-
-        if (row.gapType == GapType.safe || row.gapType == GapType.safe2x) {
-          final points = row.gapType == GapType.safe2x
-              ? GameConstants.baseScore * GameConstants.multiplier2x
-              : GameConstants.baseScore;
-          scoreManager.addScore(points);
-          add(ScoreIndicator(
-            text: '+$points',
-            position: row.position + Vector2(row.gapPositionX, 0),
-          ));
-        }
-      }
-    }
-
-    final furthestRowY = rows.isEmpty
-        ? _nextRowY
-        : rows.fold<double>(0, (max, r) => r.position.y > max ? r.position.y : max);
-
-    while (_nextRowY < furthestRowY + difficultyManager.rowSpacing * 2) {
-      _spawnRow();
-    }
-  }
-
-  void _checkCollisions() {
-    final ballCenter = _ball.position;
-    final ballRadius = GameConstants.ballSize / 2 * 0.8;
-
-    for (final row in children.whereType<ObstacleRow>()) {
-      final rowTop = row.position.y;
-      final rowBottom = rowTop + GameConstants.pipeHeight;
-
-      if (ballCenter.y + ballRadius < rowTop || ballCenter.y - ballRadius > rowBottom) {
-        continue;
-      }
-
-      final gapLeft = row.gapPositionX - row.gapWidth / 2;
-      final gapRight = row.gapPositionX + row.gapWidth / 2;
-      final inGap = ballCenter.x > gapLeft + ballRadius * 0.3 &&
-          ballCenter.x < gapRight - ballRadius * 0.3;
-
-      if (!inGap) {
-        gameOver();
-        return;
-      }
-
-      if (inGap && row.gapType == GapType.death) {
-        gameOver();
-        return;
-      }
-
-      for (final spike in row.children.whereType<Spike>()) {
-        final spikeWorldPos = row.position + spike.position;
-        final dist = (ballCenter - spikeWorldPos).length;
-        if (dist < ballRadius + GameConstants.spikeWidth / 3) {
-          gameOver();
-          return;
-        }
-      }
-    }
-  }
-
-  @override
-  void onPanUpdate(DragUpdateInfo info) {
     if (_isGameOver) return;
-    _ball.moveHorizontal(info.delta.global.x);
+
+    if (_inCooldown) {
+      _cooldownTimer -= dt;
+      if (_cooldownTimer <= 0) {
+        _inCooldown = false;
+        _waitingForTap = true;
+        _showTapHint();
+      }
+    }
   }
 
   void gameOver() {
@@ -179,7 +190,44 @@ class GravityRushGame extends FlameGame
   }
 }
 
-class _ScoreDisplay extends TextComponent with HasGameReference<GravityRushGame> {
+class _BallTrail extends Component with HasGameReference<GravityRushGame> {
+  PlinkoBall? ball;
+  final SkinData skin;
+  final List<Vector2> _positions = [];
+  final Paint _paint = Paint();
+  static const int _maxLength = 12;
+
+  _BallTrail({required this.skin}) {
+    priority = 5;
+  }
+
+  void clearTrail() => _positions.clear();
+
+  @override
+  void update(double dt) {
+    if (ball == null || !ball!.isMounted) {
+      _positions.clear();
+      return;
+    }
+    _positions.add(ball!.position.clone());
+    while (_positions.length > _maxLength) {
+      _positions.removeAt(0);
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    for (int i = 0; i < _positions.length; i++) {
+      final t = i / _positions.length;
+      _paint.color = skin.primaryColor.withValues(alpha: t * 0.25);
+      final r = GameConstants.ballRadius * t * 0.4;
+      canvas.drawCircle(Offset(_positions[i].x, _positions[i].y), r, _paint);
+    }
+  }
+}
+
+class _ScoreDisplay extends TextComponent
+    with HasGameReference<GravityRushGame> {
   _ScoreDisplay()
       : super(
           anchor: Anchor.topCenter,
@@ -187,10 +235,13 @@ class _ScoreDisplay extends TextComponent with HasGameReference<GravityRushGame>
           textRenderer: TextPaint(
             style: const TextStyle(
               color: Color(0xFFFFFFFF),
-              fontSize: 32,
+              fontSize: 36,
               fontWeight: FontWeight.bold,
               shadows: [
-                Shadow(color: Color(0xFF000000), blurRadius: 6, offset: Offset(2, 2)),
+                Shadow(
+                    color: Color(0xFF000000),
+                    blurRadius: 8,
+                    offset: Offset(2, 2)),
               ],
             ),
           ),
@@ -205,5 +256,36 @@ class _ScoreDisplay extends TextComponent with HasGameReference<GravityRushGame>
   void update(double dt) {
     super.update(dt);
     text = '${game.scoreManager.score}';
+  }
+}
+
+class _ScorePopup extends TextComponent {
+  double _lifetime = 0;
+
+  _ScorePopup({
+    required String text,
+    required Vector2 position,
+    Color color = const Color(0xFF00FF00),
+  }) : super(
+          text: text,
+          position: position,
+          anchor: Anchor.center,
+          priority: 50,
+          textRenderer: TextPaint(
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              shadows: [Shadow(color: color, blurRadius: 10)],
+            ),
+          ),
+        );
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _lifetime += dt;
+    position.y -= 60 * dt;
+    if (_lifetime >= 0.8) removeFromParent();
   }
 }

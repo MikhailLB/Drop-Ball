@@ -1,48 +1,25 @@
 import '../../utils/constants.dart';
 
 class DifficultyManager {
-  int _rowsPassed = 0;
-  int _difficultyTier = 0;
+  int _dropCount = 0;
+  int _tier = 0;
+  bool tierChanged = false;
 
-  double get scrollSpeed {
-    final speed = GameConstants.baseScrollSpeed +
-        (_difficultyTier * GameConstants.speedIncrement);
-    return speed.clamp(GameConstants.baseScrollSpeed, GameConstants.maxScrollSpeed);
-  }
+  int get tier => _tier;
+  int get dropCount => _dropCount;
+  int get skullCount => (_tier + 1).clamp(1, 4);
+  int get bonus2xCount => (1 + _tier ~/ 3).clamp(1, 2);
 
-  double get gapWidth {
-    final gap = GameConstants.baseGapWidth -
-        (_difficultyTier * GameConstants.gapShrinkRate);
-    return gap.clamp(GameConstants.minGapWidth, GameConstants.baseGapWidth);
-  }
-
-  double get rowSpacing {
-    final spacing = GameConstants.rowSpacing -
-        (_difficultyTier * 5.0);
-    return spacing.clamp(GameConstants.minRowSpacing, GameConstants.rowSpacing);
-  }
-
-  double get redPipeChance {
-    final chance = GameConstants.initialRedPipeChance +
-        (_difficultyTier * GameConstants.redPipeChanceIncrement);
-    return chance.clamp(GameConstants.initialRedPipeChance, GameConstants.maxRedPipeChance);
-  }
-
-  double get spikeChance {
-    final chance = GameConstants.initialSpikeChance +
-        (_difficultyTier * GameConstants.spikeChanceIncrement);
-    return chance.clamp(GameConstants.initialSpikeChance, GameConstants.maxSpikeChance);
-  }
-
-  void onRowPassed() {
-    _rowsPassed++;
-    if (_rowsPassed % GameConstants.rowsPerDifficultyTick == 0) {
-      _difficultyTier++;
-    }
+  void onDrop() {
+    _dropCount++;
+    final newTier = _dropCount ~/ GameConstants.dropsPerDifficulty;
+    tierChanged = newTier != _tier;
+    _tier = newTier;
   }
 
   void reset() {
-    _rowsPassed = 0;
-    _difficultyTier = 0;
+    _dropCount = 0;
+    _tier = 0;
+    tierChanged = false;
   }
 }
