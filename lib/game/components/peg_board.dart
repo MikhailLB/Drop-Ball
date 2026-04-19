@@ -10,6 +10,13 @@ enum SlotType { score, score2x, skull }
 class PegBoard extends PositionComponent
     with HasGameReference<GravityRushGame> {
   final List<Vector2> pegs = [];
+  final List<Vector2> _basePegs = [];
+  final List<bool> _isGold = [];
+  final List<bool> _isHit = [];
+  final List<bool> _isMoving = [];
+  double _moveAmplitude = 0;
+  double _time = 0;
+
   List<SlotType> slots = [];
 
   double _slotWidth = 0;
@@ -28,6 +35,14 @@ class PegBoard extends PositionComponent
   final Paint _pegGlowPaint = Paint()
     ..color = const Color(0x4400CCFF)
     ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+  final Paint _goldPegPaint = Paint()..color = const Color(0xFFFFD700);
+  final Paint _goldGlowPaint = Paint()
+    ..color = const Color(0x55FFD700)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
+  final Paint _spentPegPaint = Paint()..color = const Color(0xFF555566);
+  final Paint _movingGlowPaint = Paint()
+    ..color = const Color(0x33FF66FF)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
   final Paint _slotFillPaint = Paint();
   final Paint _slotBorderPaint = Paint()
     ..style = PaintingStyle.stroke
@@ -42,10 +57,20 @@ class PegBoard extends PositionComponent
     _circleSkull = game.spriteCache.circleSkull;
     _buildLayout();
     generateSlots(skullCount: 1, bonus2xCount: 1);
+    prepareForDrop(
+      goldChance: game.difficultyManager.goldPegChance,
+      moveChance: game.difficultyManager.movingPegChance,
+      moveAmplitude: game.difficultyManager.movingPegAmplitude,
+    );
   }
 
   void _buildLayout() {
     pegs.clear();
+    _basePegs.clear();
+    _isGold.clear();
+    _isHit.clear();
+    _isMoving.clear();
+
     final w = size.x;
     final h = size.y;
     final topY = h * GameConstants.boardTopFraction;
@@ -62,11 +87,11 @@ class PegBoard extends PositionComponent
       final y = topY + (row + 1) * rowSpacing;
       if (row.isEven) {
         for (int col = 0; col < GameConstants.pegColsWide; col++) {
-          pegs.add(Vector2(margin + col * colSpacing, y));
+          _addPeg(Vector2(margin + col * colSpacing, y));
         }
       } else {
         for (int col = 0; col < GameConstants.pegColsNarrow; col++) {
-          pegs.add(Vector2(margin + colSpacing / 2 + col * colSpacing, y));
+          _addPeg(Vector2(margin + colSpacing / 2 + col * colSpacing, y));
         }
       }
     }
@@ -74,6 +99,38 @@ class PegBoard extends PositionComponent
     _slotsY = botY + 10;
     _slotsBottom = _slotsY + h * GameConstants.slotHeightFraction;
     _slotWidth = w / GameConstants.numSlots;
+  }
+
+  void _addPeg(Vector2 pos) {
+    pegs.add(pos);
+    _basePegs.add(pos.clone());
+    _isGold.add(false);
+    _isHit.add(false);
+    _isMoving.add(false);
+  }
+
+  void prepareForDrop({
+    required double goldChance,
+    required double moveChance,
+    required double moveAmplitude,
+  }) {
+    final rng = Random();
+    _moveAmplitude = moveAmplitude;
+    for (int i = 0; i < pegs.length; i++) {
+      _isGold[i] = rng.nextDouble() < goldChance;
+      _isHit[i] = false;
+      _isMoving[i] = rng.nextDouble() < moveChance;
+      if (!_isMoving[i]) {
+        pegs[i].setFrom(_basePegs[i]);
+      }
+    }
+  }
+
+  /// Returns bonus points awarded (goldPegBonus for gold, 0 for normal).
+  int onPegHit(int index) {
+    if (index < 0 || index >= pegs.length || _isHit[index]) return 0;
+    _isHit[index] = true;
+    return _isGold[index] ? GameConstants.goldPegBonus : 0;
   }
 
   void generateSlots({required int skullCount, required int bonus2xCount}) {
@@ -104,19 +161,42 @@ class PegBoard extends PositionComponent
   }
 
   @override
+  void update(double dt) {
+    super.update(dt);
+    _time += dt;
+    for (int i = 0; i < pegs.length; i++) {
+      if (_isMoving[i]) {
+        pegs[i].x =
+            _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
+      }
+    }
+  }
+
+  @override
   void render(Canvas canvas) {
-    for (final peg in pegs) {
-      canvas.drawCircle(
-          Offset(peg.x, peg.y), _actualPegRadius + 3, _pegGlowPaint);
-      canvas.drawCircle(Offset(peg.x, peg.y), _actualPegRadius, _pegPaint);
+    for (int i = 0; i < pegs.length; i++) {
+      final offset = Offset(pegs[i].x, pegs[i].y);
+
+      if (_isGold[i] && !_isHit[i]) {
+        canvas.drawCircle(offset, _actualPegRadius + 4, _goldGlowPaint);
+        canvas.drawCircle(offset, _actualPegRadius, _goldPegPaint);
+      } else if (_isGold[i]) {
+        canvas.drawCircle(offset, _actualPegRadius, _spentPegPaint);
+      } else if (_isMoving[i]) {
+        canvas.drawCircle(offset, _actualPegRadius + 3, _movingGlowPaint);
+        canvas.drawCircle(offset, _actualPegRadius, _pegPaint);
+      } else {
+        canvas.drawCircle(offset, _actualPegRadius + 3, _pegGlowPaint);
+        canvas.drawCircle(offset, _actualPegRadius, _pegPaint);
+      }
     }
 
     final iconSize = _slotWidth * 0.55;
 
     for (int i = 0; i < slots.length; i++) {
       final x = i * _slotWidth;
-      final rect =
-          Rect.fromLTWH(x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
+      final rect = Rect.fromLTWH(
+          x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
       final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
 
       Color bg;

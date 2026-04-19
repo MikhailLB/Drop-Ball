@@ -11,7 +11,7 @@ import 'managers/difficulty_manager.dart';
 import 'managers/score_manager.dart';
 import 'sprite_cache.dart';
 
-class GravityRushGame extends FlameGame with TapCallbacks {
+class GravityRushGame extends FlameGame with PanDetector {
   final SkinData skin;
   final ScoreManager scoreManager = ScoreManager();
   final DifficultyManager difficultyManager = DifficultyManager();
@@ -60,14 +60,14 @@ class GravityRushGame extends FlameGame with TapCallbacks {
   void _showTapHint() {
     _tapHint?.removeFromParent();
     _tapHint = TextComponent(
-      text: 'TAP TO DROP',
+      text: 'TOUCH & DRAG',
       position: Vector2(size.x / 2, size.y * 0.06),
       anchor: Anchor.center,
       priority: 50,
       textRenderer: TextPaint(
         style: const TextStyle(
           color: Color(0x99FFFFFF),
-          fontSize: 18,
+          fontSize: 16,
           fontWeight: FontWeight.bold,
           letterSpacing: 3,
         ),
@@ -76,38 +76,68 @@ class GravityRushGame extends FlameGame with TapCallbacks {
     add(_tapHint!);
   }
 
+  // --- PanDetector: touch to drop, drag to steer ---
+
   @override
-  void onTapDown(TapDownEvent event) {
+  void onPanDown(DragDownInfo info) {
     if (_isGameOver || !_waitingForTap || _inCooldown || paused) return;
 
     _waitingForTap = false;
     _tapHint?.removeFromParent();
     _tapHint = null;
 
-    final tapX = event.canvasPosition.x;
+    final tapX = info.eventPosition.widget.x;
     final margin = size.x * GameConstants.boardMarginFraction;
     final dropX = tapX.clamp(
       margin + GameConstants.ballRadius,
       size.x - margin - GameConstants.ballRadius,
     );
 
+    _board.prepareForDrop(
+      goldChance: difficultyManager.goldPegChance,
+      moveChance: difficultyManager.movingPegChance,
+      moveAmplitude: difficultyManager.movingPegAmplitude,
+    );
     _dropBall(dropX);
   }
 
+  @override
+  void onPanUpdate(DragUpdateInfo info) {
+    if (_activeBall != null && !_isGameOver && !paused) {
+      _activeBall!.applyNudge(info.delta.global.x);
+    }
+  }
+
+  // --- Ball lifecycle ---
+
   void _dropBall(double x) {
-    final dropY = size.y * GameConstants.boardTopFraction - GameConstants.ballRadius;
+    final dropY =
+        size.y * GameConstants.boardTopFraction - GameConstants.ballRadius;
     _activeBall = PlinkoBall(
       sprite: spriteCache.getSphere(skin.id),
       startPosition: Vector2(x, dropY),
       pegs: _board.pegs,
       pegRadius: _board.actualPegRadius,
       onLanded: _onBallLanded,
+      onPegHit: _onPegHit,
       slotsY: _board.slotsY,
       screenWidth: size.x,
     );
     add(_activeBall!);
     _trail?.ball = _activeBall;
     _trail?.clearTrail();
+  }
+
+  void _onPegHit(int pegIndex) {
+    final bonus = _board.onPegHit(pegIndex);
+    if (bonus > 0) {
+      scoreManager.addScore(bonus);
+      add(_ScorePopup(
+        text: '+$bonus',
+        position: _board.pegs[pegIndex].clone(),
+        color: const Color(0xFFFFD700),
+      ));
+    }
   }
 
   void _onBallLanded(double x) {
@@ -189,6 +219,8 @@ class GravityRushGame extends FlameGame with TapCallbacks {
     }
   }
 }
+
+// --- Private helper components ---
 
 class _BallTrail extends Component with HasGameReference<GravityRushGame> {
   PlinkoBall? ball;

@@ -8,6 +8,7 @@ class PlinkoBall extends SpriteComponent {
   final List<Vector2> pegs;
   final double pegRadius;
   final void Function(double x) onLanded;
+  final void Function(int pegIndex) onPegHit;
   final double slotsY;
   final double screenWidth;
   bool _landed = false;
@@ -19,6 +20,7 @@ class PlinkoBall extends SpriteComponent {
     required this.pegs,
     required this.pegRadius,
     required this.onLanded,
+    required this.onPegHit,
     required this.slotsY,
     required this.screenWidth,
   }) : super(
@@ -28,6 +30,11 @@ class PlinkoBall extends SpriteComponent {
           anchor: Anchor.center,
           priority: 10,
         );
+
+  void applyNudge(double dx) {
+    if (_landed) return;
+    velocity.x += dx * GameConstants.nudgeStrength;
+  }
 
   @override
   void update(double dt) {
@@ -60,7 +67,8 @@ class PlinkoBall extends SpriteComponent {
       velocity.x = -velocity.x.abs() * GameConstants.bounceDamping;
     }
 
-    for (final peg in pegs) {
+    for (int i = 0; i < pegs.length; i++) {
+      final peg = pegs[i];
       final dx = position.x - peg.x;
       final dy = position.y - peg.y;
       final dist = sqrt(dx * dx + dy * dy);
@@ -80,6 +88,7 @@ class PlinkoBall extends SpriteComponent {
           velocity.y *= GameConstants.bounceDamping;
           velocity.x +=
               (_rng.nextDouble() - 0.5) * GameConstants.horizontalJitter;
+          onPegHit(i);
         }
       }
     }
