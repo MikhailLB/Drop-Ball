@@ -1,7 +1,9 @@
+import 'dart:math' show sin;
 import 'dart:ui' show Canvas, Color, Offset, FontWeight, Paint;
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
 import 'package:flame/components.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/painting.dart' show TextStyle, Shadow;
 import '../models/skin_data.dart';
 import '../utils/constants.dart';
@@ -11,6 +13,8 @@ import 'managers/difficulty_manager.dart';
 import 'managers/score_manager.dart';
 import 'sprite_cache.dart';
 
+enum GameEndReason { died, collected, won }
+
 class GravityRushGame extends FlameGame with PanDetector {
   final SkinData skin;
   final ScoreManager scoreManager = ScoreManager();
@@ -18,13 +22,20 @@ class GravityRushGame extends FlameGame with PanDetector {
   final SpriteCache spriteCache = SpriteCache();
 
   late PegBoard _board;
+  PegBoard get board => _board;
   PlinkoBall? _activeBall;
   _BallTrail? _trail;
+
   bool _isGameOver = false;
   bool _waitingForTap = true;
   double _cooldownTimer = 0;
   bool _inCooldown = false;
-  TextComponent? _tapHint;
+
+  GameEndReason? endReason;
+  int lastAmount = 0;
+
+  /// Flutter UI listens to this to show/hide the COLLECT button.
+  final ValueNotifier<bool> collectAvailable = ValueNotifier(false);
 
   GravityRushGame({required this.skin}) {
     images.prefix = 'assets/';
@@ -36,7 +47,7 @@ class GravityRushGame extends FlameGame with PanDetector {
   @override
   Future<void> onLoad() async {
     await spriteCache.loadAll(this);
-    await scoreManager.loadHighScore();
+    await scoreManager.loadBalance();
     await _startGame();
   }
 
@@ -44,7 +55,9 @@ class GravityRushGame extends FlameGame with PanDetector {
     _isGameOver = false;
     _waitingForTap = true;
     _inCooldown = false;
-    scoreManager.reset();
+    endReason = null;
+    lastAmount = 0;
+    scoreManager.resetForNewGame();
     difficultyManager.reset();
 
     _board = PegBoard();
@@ -53,27 +66,15 @@ class GravityRushGame extends FlameGame with PanDetector {
     _trail = _BallTrail(skin: skin);
     add(_trail!);
 
-    add(_ScoreDisplay());
-    _showTapHint();
+    add(_CoinsDisplay());
+    add(_PegCounter());
+    add(_HintText());
+    _updateCollect();
   }
 
-  void _showTapHint() {
-    _tapHint?.removeFromParent();
-    _tapHint = TextComponent(
-      text: 'TOUCH & DRAG',
-      position: Vector2(size.x / 2, size.y * 0.06),
-      anchor: Anchor.center,
-      priority: 50,
-      textRenderer: TextPaint(
-        style: const TextStyle(
-          color: Color(0x99FFFFFF),
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 3,
-        ),
-      ),
-    );
-    add(_tapHint!);
+  void _updateCollect() {
+    collectAvailable.value =
+        _waitingForTap && scoreManager.pendingCoins > 0 && !_isGameOver;
   }
 
   // --- PanDetector: touch to drop, drag to steer ---
@@ -83,8 +84,7 @@ class GravityRushGame extends FlameGame with PanDetector {
     if (_isGameOver || !_waitingForTap || _inCooldown || paused) return;
 
     _waitingForTap = false;
-    _tapHint?.removeFromParent();
-    _tapHint = null;
+    collectAvailable.value = false;
 
     final tapX = info.eventPosition.widget.x;
     final margin = size.x * GameConstants.boardMarginFraction;
@@ -93,8 +93,8 @@ class GravityRushGame extends FlameGame with PanDetector {
       size.x - margin - GameConstants.ballRadius,
     );
 
+    scoreManager.resetForNewDrop();
     _board.prepareForDrop(
-      goldChance: difficultyManager.goldPegChance,
       moveChance: difficultyManager.movingPegChance,
       moveAmplitude: difficultyManager.movingPegAmplitude,
     );
@@ -131,7 +131,7 @@ class GravityRushGame extends FlameGame with PanDetector {
   void _onPegHit(int pegIndex) {
     final bonus = _board.onPegHit(pegIndex);
     if (bonus > 0) {
-      scoreManager.addScore(bonus);
+      scoreManager.onGoldPegHit();
       add(_ScorePopup(
         text: '+$bonus',
         position: _board.pegs[pegIndex].clone(),
@@ -141,61 +141,64 @@ class GravityRushGame extends FlameGame with PanDetector {
   }
 
   void _onBallLanded(double x) {
-    final slotIndex = _board.getSlotIndex(x);
-    final slotType = _board.slots[slotIndex];
-
     _trail?.ball = null;
-
-    if (slotType == SlotType.skull) {
-      gameOver();
-      return;
-    }
-
-    final points = slotType == SlotType.score2x
-        ? GameConstants.score2x
-        : GameConstants.baseScore;
-    scoreManager.addScore(points);
-    add(_ScorePopup(
-      text: '+$points',
-      position: Vector2(x, _board.slotsY - 20),
-      color: slotType == SlotType.score2x
-          ? const Color(0xFFFFD700)
-          : const Color(0xFF00FF00),
-    ));
-
     _activeBall?.removeFromParent();
     _activeBall = null;
 
+    final slotIndex = _board.getSlotIndex(x);
+
+    if (_board.isSkullSlot(slotIndex)) {
+      _die();
+      return;
+    }
+
+    final multi = _board.getMultiplier(slotIndex);
+    scoreManager.processLanding(multi);
+
+    add(_ScorePopup(
+      text: '×${multi}',
+      position: Vector2(x, _board.slotsY - 20),
+      color: const Color(0xFF00FF88),
+    ));
+
     difficultyManager.onDrop();
-    if (difficultyManager.tierChanged) {
-      _board.generateSlots(
-        skullCount: difficultyManager.skullCount,
-        bonus2xCount: difficultyManager.bonus2xCount,
-      );
+    _board.generateSlots();
+
+    if (_board.allWhitePegsHit) {
+      _win();
+      return;
     }
 
     _inCooldown = true;
     _cooldownTimer = 0.5;
   }
 
-  @override
-  void update(double dt) {
-    super.update(dt);
-    if (_isGameOver) return;
+  // --- End conditions ---
 
-    if (_inCooldown) {
-      _cooldownTimer -= dt;
-      if (_cooldownTimer <= 0) {
-        _inCooldown = false;
-        _waitingForTap = true;
-        _showTapHint();
-      }
-    }
+  void _die() {
+    endReason = GameEndReason.died;
+    lastAmount = scoreManager.burn();
+    _isGameOver = true;
+    collectAvailable.value = false;
+    pauseEngine();
+    overlays.add('GameOver');
   }
 
-  void gameOver() {
-    if (_isGameOver) return;
+  void _win() {
+    endReason = GameEndReason.won;
+    lastAmount = scoreManager.collectWithBonus();
     _isGameOver = true;
+    collectAvailable.value = false;
+    pauseEngine();
+    overlays.add('GameOver');
+  }
+
+  void collectCoins() {
+    if (_isGameOver || scoreManager.pendingCoins <= 0) return;
+    endReason = GameEndReason.collected;
+    lastAmount = scoreManager.collect();
+    _isGameOver = true;
+    collectAvailable.value = false;
     pauseEngine();
     overlays.add('GameOver');
   }
@@ -218,9 +221,24 @@ class GravityRushGame extends FlameGame with PanDetector {
       overlays.add('Pause');
     }
   }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_isGameOver) return;
+
+    if (_inCooldown) {
+      _cooldownTimer -= dt;
+      if (_cooldownTimer <= 0) {
+        _inCooldown = false;
+        _waitingForTap = true;
+        _updateCollect();
+      }
+    }
+  }
 }
 
-// --- Private helper components ---
+// ----- Private helper components -----
 
 class _BallTrail extends Component with HasGameReference<GravityRushGame> {
   PlinkoBall? ball;
@@ -258,16 +276,16 @@ class _BallTrail extends Component with HasGameReference<GravityRushGame> {
   }
 }
 
-class _ScoreDisplay extends TextComponent
+class _CoinsDisplay extends TextComponent
     with HasGameReference<GravityRushGame> {
-  _ScoreDisplay()
+  _CoinsDisplay()
       : super(
           anchor: Anchor.topCenter,
           priority: 100,
           textRenderer: TextPaint(
             style: const TextStyle(
               color: Color(0xFFFFFFFF),
-              fontSize: 36,
+              fontSize: 30,
               fontWeight: FontWeight.bold,
               shadows: [
                 Shadow(
@@ -281,13 +299,71 @@ class _ScoreDisplay extends TextComponent
 
   @override
   void onLoad() {
-    position = Vector2(game.size.x / 2, 40);
+    position = Vector2(game.size.x / 2, 32);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    text = '${game.scoreManager.score}';
+    text = 'COINS: ${game.scoreManager.pendingCoins}';
+  }
+}
+
+class _PegCounter extends TextComponent
+    with HasGameReference<GravityRushGame> {
+  _PegCounter()
+      : super(
+          anchor: Anchor.topCenter,
+          priority: 100,
+          textRenderer: TextPaint(
+            style: const TextStyle(
+              color: Color(0xAAFFFFFF),
+              fontSize: 14,
+            ),
+          ),
+        );
+
+  @override
+  void onLoad() {
+    position = Vector2(game.size.x / 2, 66);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    text = 'PEGS: ${game.board.hitWhitePegs}/${game.board.totalWhitePegs}';
+  }
+}
+
+class _HintText extends TextComponent with HasGameReference<GravityRushGame> {
+  double _t = 0;
+  late final double _baseX;
+
+  _HintText()
+      : super(
+          text: '● HIT ALL WHITE PEGS ● DRAG TO STEER ●',
+          anchor: Anchor.center,
+          priority: 100,
+          textRenderer: TextPaint(
+            style: const TextStyle(
+              color: Color(0x77FFFFFF),
+              fontSize: 11,
+              letterSpacing: 1.5,
+            ),
+          ),
+        );
+
+  @override
+  void onLoad() {
+    _baseX = game.size.x / 2;
+    position = Vector2(_baseX, 88);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _t += dt;
+    position.x = _baseX + sin(_t * 1.5) * 12;
   }
 }
 

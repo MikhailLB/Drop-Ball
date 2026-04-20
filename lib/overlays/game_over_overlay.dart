@@ -13,9 +13,28 @@ class GameOverOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final score = game.scoreManager.score;
-    final highScore = game.scoreManager.highScore;
-    final isNewRecord = score >= highScore && score > 0;
+    final reason = game.endReason ?? GameEndReason.died;
+    final amount = game.lastAmount;
+    final balance = game.scoreManager.balance;
+
+    String title;
+    Color titleColor;
+    String subtitle;
+
+    switch (reason) {
+      case GameEndReason.died:
+        title = 'GAME OVER';
+        titleColor = Colors.redAccent;
+        subtitle = 'BURNED: $amount coins';
+      case GameEndReason.collected:
+        title = 'COLLECTED!';
+        titleColor = Colors.greenAccent;
+        subtitle = 'SAVED: $amount coins';
+      case GameEndReason.won:
+        title = 'ALL PEGS HIT!';
+        titleColor = Colors.amberAccent;
+        subtitle = 'BONUS 2× — SAVED: $amount coins';
+    }
 
     return Container(
       color: const Color(0xCC000000),
@@ -23,46 +42,31 @@ class GameOverOverlay extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'GAME OVER',
+            Text(
+              title,
               style: TextStyle(
-                color: Colors.redAccent,
-                fontSize: 48,
+                color: titleColor,
+                fontSize: 44,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 4,
-                shadows: [
-                  Shadow(color: Colors.red, blurRadius: 20),
-                ],
+                shadows: [Shadow(color: titleColor, blurRadius: 20)],
               ),
             ),
-            const SizedBox(height: 30),
-            if (isNewRecord)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10),
-                child: Text(
-                  'NEW RECORD!',
-                  style: TextStyle(
-                    color: Colors.amberAccent,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    shadows: [Shadow(color: Colors.amber, blurRadius: 15)],
-                  ),
-                ),
-              ),
+            const SizedBox(height: 20),
             Text(
-              'SCORE: $score',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 32,
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
-              'BEST: $highScore',
+              'BALANCE: $balance',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 20,
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 16,
               ),
             ),
             const SizedBox(height: 40),

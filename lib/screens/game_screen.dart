@@ -53,6 +53,7 @@ class _GameScreenState extends State<GameScreen> {
                   ),
             },
           ),
+          // Pause button
           Positioned(
             top: 40,
             right: 16,
@@ -66,11 +67,49 @@ class _GameScreenState extends State<GameScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.white24),
                 ),
-                child: const Icon(
-                  Icons.pause,
-                  color: Colors.white70,
-                  size: 28,
-                ),
+                child: const Icon(Icons.pause, color: Colors.white70, size: 28),
+              ),
+            ),
+          ),
+          // COLLECT button
+          Positioned(
+            bottom: 10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _game.collectAvailable,
+                builder: (context, available, _) {
+                  if (!available) return const SizedBox.shrink();
+                  return GestureDetector(
+                    onTap: () => _game.collectCoins(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 28, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xCC00AA44),
+                        borderRadius: BorderRadius.circular(14),
+                        border:
+                            Border.all(color: Colors.greenAccent, width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.greenAccent.withValues(alpha: 0.4),
+                            blurRadius: 12,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'COLLECT  ${_game.scoreManager.pendingCoins}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

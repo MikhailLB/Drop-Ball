@@ -2,10 +2,9 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flutter/painting.dart' show TextStyle, FontWeight;
 import '../../utils/constants.dart';
 import '../gravity_rush_game.dart';
-
-enum SlotType { score, score2x, skull }
 
 class PegBoard extends PositionComponent
     with HasGameReference<GravityRushGame> {
@@ -17,7 +16,8 @@ class PegBoard extends PositionComponent
   double _moveAmplitude = 0;
   double _time = 0;
 
-  List<SlotType> slots = [];
+  /// Slot multipliers. 0 means skull.
+  List<double> slotMultipliers = [];
 
   double _slotWidth = 0;
   double _slotsY = 0;
@@ -27,8 +27,17 @@ class PegBoard extends PositionComponent
   double get slotsY => _slotsY;
   double get actualPegRadius => _actualPegRadius;
 
-  late final Sprite _greenCircle;
-  late final Sprite _circle2x;
+  int get totalWhitePegs => _isGold.where((g) => !g).length;
+  int get hitWhitePegs {
+    int c = 0;
+    for (int i = 0; i < pegs.length; i++) {
+      if (!_isGold[i] && _isHit[i]) c++;
+    }
+    return c;
+  }
+
+  bool get allWhitePegsHit => hitWhitePegs >= totalWhitePegs;
+
   late final Sprite _circleSkull;
 
   final Paint _pegPaint = Paint()..color = const Color(0xFFDDDDEE);
@@ -48,20 +57,22 @@ class PegBoard extends PositionComponent
     ..style = PaintingStyle.stroke
     ..strokeWidth = 1.5;
 
+  final TextPaint _slotTextPaint = TextPaint(
+    style: const TextStyle(
+      color: Color(0xFFFFFFFF),
+      fontSize: 13,
+      fontWeight: FontWeight.bold,
+    ),
+  );
+
   @override
   Future<void> onLoad() async {
     size = game.size;
     priority = 0;
-    _greenCircle = game.spriteCache.greenCircle;
-    _circle2x = game.spriteCache.circle2x;
     _circleSkull = game.spriteCache.circleSkull;
     _buildLayout();
-    generateSlots(skullCount: 1, bonus2xCount: 1);
-    prepareForDrop(
-      goldChance: game.difficultyManager.goldPegChance,
-      moveChance: game.difficultyManager.movingPegChance,
-      moveAmplitude: game.difficultyManager.movingPegAmplitude,
-    );
+    _assignPegTypes();
+    generateSlots();
   }
 
   void _buildLayout() {
@@ -109,16 +120,23 @@ class PegBoard extends PositionComponent
     _isMoving.add(false);
   }
 
+  /// Called once at game start to assign gold vs white pegs.
+  void _assignPegTypes() {
+    final rng = Random();
+    for (int i = 0; i < pegs.length; i++) {
+      _isGold[i] = rng.nextDouble() < GameConstants.goldPegChance;
+      _isHit[i] = false;
+    }
+  }
+
+  /// Called before each drop to set moving pegs for current difficulty.
   void prepareForDrop({
-    required double goldChance,
     required double moveChance,
     required double moveAmplitude,
   }) {
     final rng = Random();
     _moveAmplitude = moveAmplitude;
     for (int i = 0; i < pegs.length; i++) {
-      _isGold[i] = rng.nextDouble() < goldChance;
-      _isHit[i] = false;
       _isMoving[i] = rng.nextDouble() < moveChance;
       if (!_isMoving[i]) {
         pegs[i].setFrom(_basePegs[i]);
@@ -126,35 +144,29 @@ class PegBoard extends PositionComponent
     }
   }
 
-  /// Returns bonus points awarded (goldPegBonus for gold, 0 for normal).
+  /// Returns gold bonus points if gold peg hit for first time, else 0.
   int onPegHit(int index) {
     if (index < 0 || index >= pegs.length || _isHit[index]) return 0;
     _isHit[index] = true;
     return _isGold[index] ? GameConstants.goldPegBonus : 0;
   }
 
-  void generateSlots({required int skullCount, required int bonus2xCount}) {
-    slots = List.filled(GameConstants.numSlots, SlotType.score);
+  void generateSlots() {
+    final dm = game.difficultyManager;
+    slotMultipliers = dm.generateMultipliers();
     final rng = Random();
-
     int placed = 0;
-    while (placed < skullCount && placed < GameConstants.numSlots - 2) {
+    while (placed < dm.skullCount && placed < GameConstants.numSlots - 1) {
       final idx = rng.nextInt(GameConstants.numSlots);
-      if (slots[idx] == SlotType.score) {
-        slots[idx] = SlotType.skull;
-        placed++;
-      }
-    }
-
-    placed = 0;
-    while (placed < bonus2xCount) {
-      final idx = rng.nextInt(GameConstants.numSlots);
-      if (slots[idx] == SlotType.score) {
-        slots[idx] = SlotType.score2x;
+      if (slotMultipliers[idx] > 0) {
+        slotMultipliers[idx] = 0;
         placed++;
       }
     }
   }
+
+  bool isSkullSlot(int index) => slotMultipliers[index] == 0;
+  double getMultiplier(int index) => slotMultipliers[index];
 
   int getSlotIndex(double x) {
     return (x / _slotWidth).floor().clamp(0, GameConstants.numSlots - 1);
@@ -174,62 +186,56 @@ class PegBoard extends PositionComponent
 
   @override
   void render(Canvas canvas) {
+    // --- Pegs ---
     for (int i = 0; i < pegs.length; i++) {
       final offset = Offset(pegs[i].x, pegs[i].y);
 
-      if (_isGold[i] && !_isHit[i]) {
+      if (_isHit[i]) {
+        canvas.drawCircle(offset, _actualPegRadius, _spentPegPaint);
+      } else if (_isGold[i]) {
         canvas.drawCircle(offset, _actualPegRadius + 4, _goldGlowPaint);
         canvas.drawCircle(offset, _actualPegRadius, _goldPegPaint);
-      } else if (_isGold[i]) {
-        canvas.drawCircle(offset, _actualPegRadius, _spentPegPaint);
-      } else if (_isMoving[i]) {
-        canvas.drawCircle(offset, _actualPegRadius + 3, _movingGlowPaint);
-        canvas.drawCircle(offset, _actualPegRadius, _pegPaint);
       } else {
-        canvas.drawCircle(offset, _actualPegRadius + 3, _pegGlowPaint);
+        final glow = _isMoving[i] ? _movingGlowPaint : _pegGlowPaint;
+        canvas.drawCircle(offset, _actualPegRadius + 3, glow);
         canvas.drawCircle(offset, _actualPegRadius, _pegPaint);
       }
     }
 
-    final iconSize = _slotWidth * 0.55;
+    // --- Slots ---
+    final iconSize = _slotWidth * 0.50;
 
-    for (int i = 0; i < slots.length; i++) {
+    for (int i = 0; i < slotMultipliers.length; i++) {
       final x = i * _slotWidth;
       final rect = Rect.fromLTWH(
           x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
       final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
-
-      Color bg;
-      Color border;
-      Sprite icon;
-
-      switch (slots[i]) {
-        case SlotType.score:
-          bg = const Color(0x3000FF00);
-          border = const Color(0x6600FF00);
-          icon = _greenCircle;
-        case SlotType.score2x:
-          bg = const Color(0x30FFD700);
-          border = const Color(0x66FFD700);
-          icon = _circle2x;
-        case SlotType.skull:
-          bg = const Color(0x30FF0000);
-          border = const Color(0x66FF0000);
-          icon = _circleSkull;
-      }
-
-      _slotFillPaint.color = bg;
-      _slotBorderPaint.color = border;
-      canvas.drawRRect(rrect, _slotFillPaint);
-      canvas.drawRRect(rrect, _slotBorderPaint);
-
       final cx = x + _slotWidth / 2;
       final cy = _slotsY + (_slotsBottom - _slotsY) / 2;
-      icon.render(
-        canvas,
-        position: Vector2(cx - iconSize / 2, cy - iconSize / 2),
-        size: Vector2.all(iconSize),
-      );
+      final isSkull = slotMultipliers[i] == 0;
+
+      if (isSkull) {
+        _slotFillPaint.color = const Color(0x30FF0000);
+        _slotBorderPaint.color = const Color(0x66FF0000);
+        canvas.drawRRect(rrect, _slotFillPaint);
+        canvas.drawRRect(rrect, _slotBorderPaint);
+        _circleSkull.render(
+          canvas,
+          position: Vector2(cx - iconSize / 2, cy - iconSize / 2),
+          size: Vector2.all(iconSize),
+        );
+      } else {
+        _slotFillPaint.color = const Color(0x3000FF00);
+        _slotBorderPaint.color = const Color(0x6600FF00);
+        canvas.drawRRect(rrect, _slotFillPaint);
+        canvas.drawRRect(rrect, _slotBorderPaint);
+        _slotTextPaint.render(
+          canvas,
+          '${slotMultipliers[i]}x',
+          Vector2(cx, cy),
+          anchor: Anchor.center,
+        );
+      }
     }
   }
 }

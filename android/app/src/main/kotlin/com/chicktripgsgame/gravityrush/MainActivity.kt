@@ -1,4 +1,4 @@
-package com.mikhail.gravity_rush
+package com.chicktripgsgame.gravityrush
 
 import io.flutter.embedding.android.FlutterActivity
 

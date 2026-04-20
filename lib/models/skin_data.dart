@@ -14,6 +14,7 @@ class SkinData {
   final double particleLifespan;
   final double particleSpeed;
   final double glowRadius;
+  final int price;
 
   const SkinData({
     required this.id,
@@ -26,6 +27,7 @@ class SkinData {
     required this.particleLifespan,
     required this.particleSpeed,
     required this.glowRadius,
+    this.price = 0,
   });
 
   static const List<SkinData> allSkins = [
@@ -40,6 +42,7 @@ class SkinData {
       particleLifespan: 0.4,
       particleSpeed: 30,
       glowRadius: 0,
+      price: 0,
     ),
     SkinData(
       id: 'green',
@@ -52,6 +55,7 @@ class SkinData {
       particleLifespan: 0.6,
       particleSpeed: 45,
       glowRadius: 4,
+      price: 1000000,
     ),
     SkinData(
       id: 'yellow',
@@ -64,6 +68,7 @@ class SkinData {
       particleLifespan: 0.8,
       particleSpeed: 60,
       glowRadius: 8,
+      price: 5000000,
     ),
     SkinData(
       id: 'red',
@@ -76,6 +81,7 @@ class SkinData {
       particleLifespan: 1.0,
       particleSpeed: 80,
       glowRadius: 12,
+      price: 15000000,
     ),
     SkinData(
       id: 'purple',
@@ -88,10 +94,22 @@ class SkinData {
       particleLifespan: 1.3,
       particleSpeed: 100,
       glowRadius: 18,
+      price: 50000000,
     ),
   ];
 
   static SkinData getById(String id) {
     return allSkins.firstWhere((s) => s.id == id, orElse: () => allSkins[0]);
+  }
+
+  static String formatPrice(int price) {
+    if (price >= 1000000) {
+      final m = price / 1000000;
+      return m == m.roundToDouble()
+          ? '${m.round()}M'
+          : '${m.toStringAsFixed(1)}M';
+    }
+    if (price >= 1000) return '${price ~/ 1000}K';
+    return '$price';
   }
 }

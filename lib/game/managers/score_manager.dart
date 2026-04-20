@@ -1,32 +1,65 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../utils/constants.dart';
 
 class ScoreManager {
-  int _score = 0;
-  int _highScore = 0;
-  static const String _highScoreKey = 'high_score';
+  int _pendingCoins = 0;
+  int _balance = 0;
+  int _goldCoinsThisDrop = 0;
 
-  int get score => _score;
-  int get highScore => _highScore;
+  int get pendingCoins => _pendingCoins;
+  int get balance => _balance;
+  int get goldCoinsThisDrop => _goldCoinsThisDrop;
 
-  Future<void> loadHighScore() async {
+  Future<void> loadBalance() async {
     final prefs = await SharedPreferences.getInstance();
-    _highScore = prefs.getInt(_highScoreKey) ?? 0;
+    _balance = prefs.getInt('balance') ?? 0;
   }
 
-  Future<void> _saveHighScore() async {
+  Future<void> _saveBalance() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_highScoreKey, _highScore);
+    await prefs.setInt('balance', _balance);
   }
 
-  void addScore(int points) {
-    _score += points;
-    if (_score > _highScore) {
-      _highScore = _score;
-      _saveHighScore();
-    }
+  void onGoldPegHit() {
+    _goldCoinsThisDrop += GameConstants.goldPegBonus;
   }
 
-  void reset() {
-    _score = 0;
+  /// Adds this drop's earnings to pending, then multiplies EVERYTHING.
+  void processLanding(double multiplier) {
+    _pendingCoins += _goldCoinsThisDrop + GameConstants.baseDropCoins;
+    _pendingCoins = (_pendingCoins * multiplier).round();
+    _goldCoinsThisDrop = 0;
+  }
+
+  /// Moves pending coins to saved balance.
+  int collect() {
+    final amount = _pendingCoins;
+    _balance += _pendingCoins;
+    _pendingCoins = 0;
+    _saveBalance();
+    return amount;
+  }
+
+  /// Win bonus: doubles pending, then collects.
+  int collectWithBonus() {
+    _pendingCoins *= 2;
+    return collect();
+  }
+
+  /// Burns all pending coins on death.
+  int burn() {
+    final amount = _pendingCoins;
+    _pendingCoins = 0;
+    _goldCoinsThisDrop = 0;
+    return amount;
+  }
+
+  void resetForNewGame() {
+    _pendingCoins = 0;
+    _goldCoinsThisDrop = 0;
+  }
+
+  void resetForNewDrop() {
+    _goldCoinsThisDrop = 0;
   }
 }

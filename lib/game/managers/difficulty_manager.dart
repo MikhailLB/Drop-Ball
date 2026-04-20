@@ -1,34 +1,37 @@
+import 'dart:math';
 import '../../utils/constants.dart';
 
 class DifficultyManager {
-  int _dropCount = 0;
-  int _tier = 0;
-  bool tierChanged = false;
+  int _iteration = 0;
 
-  int get tier => _tier;
-  int get dropCount => _dropCount;
-  int get skullCount => (_tier + 1).clamp(1, 4);
-  int get bonus2xCount => (1 + _tier ~/ 3).clamp(1, 2);
+  int get iteration => _iteration;
 
-  double get goldPegChance =>
-      (GameConstants.baseGoldPegChance + _tier * 0.025).clamp(0.15, 0.30);
+  /// Skulls grow fast: 1 → 2 → 3 → 4 → 5 → 6 (max)
+  int get skullCount => (1 + _iteration).clamp(1, 6);
 
+  double get minMultiplier => 1.0 + _iteration * 0.2;
+  double get maxMultiplier => 1.5 + _iteration * 0.6;
+
+  /// Moving pegs start from iteration 2 and ramp up fast
   double get movingPegChance =>
-      _tier >= 2 ? ((_tier - 1) * 0.10).clamp(0.0, 0.35) : 0.0;
-
+      _iteration >= 2 ? ((_iteration - 1) * 0.10).clamp(0.0, 0.40) : 0.0;
   double get movingPegAmplitude =>
-      (GameConstants.baseMovingPegAmplitude + _tier * 1.5).clamp(10.0, 18.0);
+      (10.0 + _iteration * 1.5).clamp(10.0, 20.0);
+
+  List<double> generateMultipliers() {
+    final rng = Random();
+    return List.generate(GameConstants.numSlots, (_) {
+      final v =
+          minMultiplier + rng.nextDouble() * (maxMultiplier - minMultiplier);
+      return double.parse(v.toStringAsFixed(1));
+    });
+  }
 
   void onDrop() {
-    _dropCount++;
-    final newTier = _dropCount ~/ GameConstants.dropsPerDifficulty;
-    tierChanged = newTier != _tier;
-    _tier = newTier;
+    _iteration++;
   }
 
   void reset() {
-    _dropCount = 0;
-    _tier = 0;
-    tierChanged = false;
+    _iteration = 0;
   }
 }

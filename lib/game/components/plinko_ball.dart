@@ -13,6 +13,7 @@ class PlinkoBall extends SpriteComponent {
   final double screenWidth;
   bool _landed = false;
   final Random _rng = Random();
+  double _driftTimer = 0;
 
   PlinkoBall({
     required Sprite sprite,
@@ -40,6 +41,14 @@ class PlinkoBall extends SpriteComponent {
   void update(double dt) {
     super.update(dt);
     if (_landed) return;
+
+    // Random drift makes ball harder to control
+    _driftTimer += dt;
+    if (_driftTimer >= GameConstants.driftInterval) {
+      _driftTimer = 0;
+      velocity.x +=
+          (_rng.nextDouble() - 0.5) * GameConstants.driftForce;
+    }
 
     final subDt = dt / GameConstants.physicsSubsteps;
     for (int s = 0; s < GameConstants.physicsSubsteps; s++) {
