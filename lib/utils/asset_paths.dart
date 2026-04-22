@@ -44,6 +44,8 @@ class AssetPaths {
   // Ad screens
   static const String bonus = 'assets/add_screens/bonus.webp';
   static const String skip = 'assets/add_screens/skip.webp';
+  static const String nfVertical = 'assets/add_screens/nf_vertical_screen.mp4';
+  static const String nfHorizontal = 'assets/add_screens/nf_horizontal_screen.mp4';
 
   static const List<String> allImages = [
     blueSphere, greenSphere, yellowSphere, redSphere, purpleSphere,

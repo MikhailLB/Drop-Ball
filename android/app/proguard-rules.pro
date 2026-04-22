@@ -1,3 +1,24 @@
+# Flutter
+-keep class io.flutter.app.** { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class io.flutter.util.** { *; }
+-keep class io.flutter.view.** { *; }
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
--dontwarn io.flutter.embedding.**
+
+# Firebase
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
+# AppsFlyer
+-keep class com.appsflyer.** { *; }
+-dontwarn com.appsflyer.**
+
+# Play Integrity
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
+# WebView with JS
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
