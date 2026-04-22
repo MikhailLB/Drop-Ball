@@ -14,7 +14,7 @@ plugins {
 }
 
 android {
-    namespace = "com.chicktripgsgame.gravityrush"
+    namespace = "com.gsteamgsgames.gravityrush"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -37,7 +37,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.chicktripgsgame.gravityrush"
+        applicationId = "com.gsteamgsgames.gravityrush"
         minSdk = 24
         targetSdk = 35
         versionCode = flutter.versionCode
