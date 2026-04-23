@@ -4,16 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app.dart';
-import 'services/appsflyer_service.dart';
-import 'services/connectivity_service.dart';
-import 'services/http_client.dart';
-import 'services/push_notification_service.dart';
-import 'services/remote_service.dart';
-import 'services/storage_service.dart';
+import 'services/attribution_gateway.dart';
+import 'services/browser_http.dart';
+import 'services/cloud_push_client.dart';
+import 'services/config_api.dart';
+import 'services/local_store.dart';
+import 'services/network_monitor.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
+Future<void> _safeFirebase() async {
   try {
     await Firebase.initializeApp();
     await FirebaseAppCheck.instance.activate(
@@ -22,34 +20,43 @@ void main() async {
           : AndroidProvider.playIntegrity,
     );
   } catch (_) {}
+}
 
-  await SystemChrome.setPreferredOrientations([
+Future<void> _configureChrome() async {
+  await SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
   ]);
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ),
+  );
+}
 
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
-  await appHttpClient.init();
+  await _safeFirebase();
+  await _configureChrome();
+  await browserHttp.bootstrap();
 
-  final storage = StorageService();
-  await storage.init();
+  final store = LocalStore();
+  await store.bootstrap();
 
-  final connectivity = ConnectivityService();
-  final appsFlyer = AppsFlyerService();
-  final remoteApi = RemoteService(storage);
-  final pushService = PushNotificationService(storage);
+  final net = NetworkMonitor();
+  final attribution = AttributionGateway();
+  final config = ConfigApi(store);
+  final push = CloudPushClient(store);
 
   runApp(GravityRushApp(
-    storage: storage,
-    connectivity: connectivity,
-    appsFlyer: appsFlyer,
-    remoteApi: remoteApi,
-    pushService: pushService,
+    store: store,
+    net: net,
+    attribution: attribution,
+    config: config,
+    push: push,
   ));
 }

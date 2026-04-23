@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
-import 'services/appsflyer_service.dart';
-import 'services/connectivity_service.dart';
-import 'services/push_notification_service.dart';
-import 'services/remote_service.dart';
-import 'services/storage_service.dart';
+import 'screens/boot_screen.dart';
+import 'services/attribution_gateway.dart';
+import 'services/cloud_push_client.dart';
+import 'services/config_api.dart';
+import 'services/local_store.dart';
+import 'services/network_monitor.dart';
 
 class GravityRushApp extends StatelessWidget {
-  final StorageService storage;
-  final ConnectivityService connectivity;
-  final AppsFlyerService appsFlyer;
-  final RemoteService remoteApi;
-  final PushNotificationService pushService;
+  final LocalStore store;
+  final NetworkMonitor net;
+  final AttributionGateway attribution;
+  final ConfigApi config;
+  final CloudPushClient push;
 
   const GravityRushApp({
     super.key,
-    required this.storage,
-    required this.connectivity,
-    required this.appsFlyer,
-    required this.remoteApi,
-    required this.pushService,
+    required this.store,
+    required this.net,
+    required this.attribution,
+    required this.config,
+    required this.push,
   });
 
   @override
@@ -30,12 +30,12 @@ class GravityRushApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.black,
       ),
-      home: SplashScreen(
-        storage: storage,
-        connectivity: connectivity,
-        appsFlyer: appsFlyer,
-        remoteApi: remoteApi,
-        pushService: pushService,
+      home: BootScreen(
+        store: store,
+        net: net,
+        attribution: attribution,
+        config: config,
+        push: push,
       ),
     );
   }
