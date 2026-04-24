@@ -152,30 +152,32 @@ class _PushOptInScreenState extends State<PushOptInScreen> {
   Widget _buildActions(Size size, bool landscape) {
     final acceptWidth = landscape ? size.width * 0.26 : size.width * 0.58;
     final skipWidth = landscape ? size.width * 0.18 : size.width * 0.40;
-    final bottomPadding = landscape ? size.height * 0.10 : size.height * 0.09;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    // Landscape: dock much closer to the bottom edge so ALLOW clears the
+    // gold frame. Portrait: keep a little more breathing room.
+    final bottomPadding =
+        (landscape ? size.height * 0.04 : size.height * 0.08) + bottomInset;
 
     return Positioned(
       left: 0,
       right: 0,
       bottom: bottomPadding,
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _GoldAcceptButton(
-              width: acceptWidth,
-              compact: landscape,
-              onTap: _accept,
-            ),
-            SizedBox(height: landscape ? 8 : 12),
-            _SkipButton(
-              width: skipWidth,
-              compact: landscape,
-              onTap: _skip,
-            ),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _GoldAcceptButton(
+            width: acceptWidth,
+            compact: landscape,
+            onTap: _accept,
+          ),
+          SizedBox(height: landscape ? 8 : 12),
+          _SkipButton(
+            width: skipWidth,
+            compact: landscape,
+            onTap: _skip,
+          ),
+        ],
       ),
     );
   }
