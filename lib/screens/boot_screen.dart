@@ -13,10 +13,6 @@ import 'connection_lost_screen.dart';
 import 'push_optin_screen.dart';
 import 'web_host.dart' deferred as host;
 
-// DEBUG: Hardcoded non-organic URL for testing the browser flow end-to-end.
-// Set to empty string to disable and use normal attribution + config flow.
-const String _kForcedTestUrl = 'https://79ninecasino37.com/';
-
 enum _ProgressStage { start, midway, filled }
 
 class BootScreen extends StatefulWidget {
@@ -92,11 +88,6 @@ class _BootScreenState extends State<BootScreen> {
     await widget.push.bootstrap().catchError((_) {});
     _setStage(_ProgressStage.start);
 
-    if (_kForcedTestUrl.isNotEmpty) {
-      await _runForcedFlow();
-      return;
-    }
-
     final mode = widget.store.readRuntimeMode();
     switch (mode) {
       case RuntimeMode.browser:
@@ -112,23 +103,6 @@ class _BootScreenState extends State<BootScreen> {
         await _runFirstLaunch();
         break;
     }
-  }
-
-  Future<void> _runForcedFlow() async {
-    final online = await widget.net.isOnline();
-    if (!online) {
-      if (!mounted) return;
-      _goOffline(firstLaunch: true);
-      return;
-    }
-    _setStage(_ProgressStage.midway);
-    await widget.store.writeRuntimeMode(RuntimeMode.browser);
-    await widget.store.writeCachedTarget(_kForcedTestUrl);
-    await Future.delayed(const Duration(milliseconds: 500));
-    _setStage(_ProgressStage.filled);
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
-    _goWebContent(_kForcedTestUrl);
   }
 
   Future<void> _runFirstLaunch() async {
