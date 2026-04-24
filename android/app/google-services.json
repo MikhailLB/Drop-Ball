@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "gravityrush-placeholder",
-    "storage_bucket": "gravityrush-placeholder.appspot.com"
+    "project_number": "585000410227",
+    "project_id": "gravityrush-3216d",
+    "storage_bucket": "gravityrush-3216d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:585000410227:android:493416808c8508cc4c9e06",
         "android_client_info": {
           "package_name": "com.gsteamgsgames.gravityrush"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "PLACEHOLDER_API_KEY_REPLACE_WITH_REAL"
+          "current_key": "AIzaSyC9t58hxloDiT4TK_vxdGiGI57J1GqwbtY"
         }
       ],
       "services": {
