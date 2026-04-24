@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../config/brand_config.dart';
@@ -148,186 +150,324 @@ class _PushOptInScreenState extends State<PushOptInScreen> {
   }
 
   Widget _buildActions(Size size, bool landscape) {
-    if (!landscape) {
-      return Positioned(
-        left: size.width * 0.08,
-        right: size.width * 0.08,
-        bottom: size.height * 0.07,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _AllowButton(onTap: _accept),
-            const SizedBox(height: 14),
-            _LaterButton(onTap: _skip),
-          ],
-        ),
-      );
-    }
+    final acceptWidth = landscape ? size.width * 0.32 : size.width * 0.72;
+    final skipWidth = landscape ? size.width * 0.22 : size.width * 0.50;
+    final topFraction = landscape ? 0.64 : 0.60;
+
     return Positioned(
       left: 0,
       right: 0,
-      bottom: size.height * 0.06,
+      top: size.height * topFraction,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: size.width * 0.35,
-            child: _AllowButton(onTap: _accept, compact: true),
+          _GoldAcceptButton(
+            width: acceptWidth,
+            compact: landscape,
+            onTap: _accept,
           ),
-          const SizedBox(height: 8),
-          _LaterButton(onTap: _skip, compact: true),
+          SizedBox(height: landscape ? 12 : 18),
+          _SkipButton(
+            width: skipWidth,
+            compact: landscape,
+            onTap: _skip,
+          ),
         ],
       ),
     );
   }
 }
 
-class _AllowButton extends StatefulWidget {
-  final VoidCallback onTap;
+/// Golden gradient Accept button with animated shimmer and pulsing glow.
+/// Matches the gold-framed UI in the notification-permission video.
+class _GoldAcceptButton extends StatefulWidget {
+  final double width;
   final bool compact;
-  const _AllowButton({required this.onTap, this.compact = false});
+  final VoidCallback onTap;
+
+  const _GoldAcceptButton({
+    required this.width,
+    required this.compact,
+    required this.onTap,
+  });
+
   @override
-  State<_AllowButton> createState() => _AllowButtonState();
+  State<_GoldAcceptButton> createState() => _GoldAcceptButtonState();
 }
 
-class _AllowButtonState extends State<_AllowButton>
-    with SingleTickerProviderStateMixin {
+class _GoldAcceptButtonState extends State<_GoldAcceptButton>
+    with TickerProviderStateMixin {
+  late final AnimationController _pulse;
+  late final AnimationController _shimmer;
   bool _down = false;
-  late final AnimationController _ctrl;
-  late final Animation<double> _glow;
+
+  static const _gold = Color(0xFFF6C54A);
+  static const _goldDeep = Color(0xFFB07713);
+  static const _goldLight = Color(0xFFFFE9A8);
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(
+    _pulse = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1400),
     )..repeat(reverse: true);
-    _glow = Tween<double>(begin: 0.35, end: 0.8).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeInOut),
-    );
+    _shimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat();
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _pulse.dispose();
+    _shimmer.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final height = widget.compact ? 48.0 : 62.0;
+    final fontSize = widget.compact ? 16.0 : 20.0;
+
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: (_) => setState(() => _down = true),
       onTapUp: (_) {
         setState(() => _down = false);
         widget.onTap();
       },
       onTapCancel: () => setState(() => _down = false),
-      child: AnimatedBuilder(
-        animation: _glow,
-        builder: (_, _) => AnimatedScale(
-          scale: _down ? 0.96 : 1.0,
-          duration: const Duration(milliseconds: 80),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.cyanAccent
-                      .withValues(alpha: _down ? 0.2 : _glow.value),
-                  blurRadius: _down ? 8 : 18 + _glow.value * 14,
-                  spreadRadius: _down ? 0 : _glow.value * 3,
-                ),
-              ],
-            ),
-            child: Image.asset(
-              AssetPaths.bonus,
-              height: widget.compact ? 54 : 78,
-              fit: BoxFit.contain,
-              errorBuilder: (_, e, s) => _Fallback(
-                label: 'Accept',
-                tint: const Color(0xFF00E5FF),
-                compact: widget.compact,
+      child: AnimatedScale(
+        scale: _down ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 90),
+        curve: Curves.easeOut,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_pulse, _shimmer]),
+          builder: (_, _) {
+            final pulse = 0.5 + _pulse.value * 0.5;
+            final shimmer = _shimmer.value;
+            return SizedBox(
+              width: widget.width,
+              height: height,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Outer glow
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(height / 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _gold.withValues(alpha: 0.35 * pulse),
+                            blurRadius: 22 + 10 * pulse,
+                            spreadRadius: 1 + 2 * pulse,
+                          ),
+                          BoxShadow(
+                            color: _goldLight.withValues(alpha: 0.25 * pulse),
+                            blurRadius: 40 + 20 * pulse,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Body: gold gradient fill
+                  Positioned.fill(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(height / 2),
+                        gradient: const LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            _goldLight,
+                            _gold,
+                            _goldDeep,
+                          ],
+                          stops: [0.0, 0.55, 1.0],
+                        ),
+                        border: Border.all(
+                          color: _goldLight.withValues(alpha: 0.9),
+                          width: 1.4,
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Inner highlight on top half
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(height / 2),
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.center,
+                            colors: [
+                              Colors.white.withValues(alpha: 0.55),
+                              Colors.white.withValues(alpha: 0.0),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Diagonal shimmer sweep
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(height / 2),
+                    child: IgnorePointer(
+                      child: Transform.translate(
+                        offset: Offset(
+                          (shimmer * 2.0 - 1.0) * widget.width,
+                          0,
+                        ),
+                        child: Transform.rotate(
+                          angle: -math.pi / 9,
+                          child: Container(
+                            width: widget.width * 0.35,
+                            height: height * 2,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [
+                                  Colors.white.withValues(alpha: 0.0),
+                                  Colors.white.withValues(alpha: 0.55),
+                                  Colors.white.withValues(alpha: 0.0),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // Label
+                  Text(
+                    'ALLOW',
+                    style: TextStyle(
+                      color: const Color(0xFF3B2500),
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 3,
+                      shadows: [
+                        Shadow(
+                          color: _goldLight.withValues(alpha: 0.9),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class _LaterButton extends StatefulWidget {
+/// Outlined Skip button: minimal, gold-outline, subtle breathing animation.
+class _SkipButton extends StatefulWidget {
+  final double width;
+  final bool compact;
   final VoidCallback onTap;
-  final bool compact;
-  const _LaterButton({required this.onTap, this.compact = false});
-  @override
-  State<_LaterButton> createState() => _LaterButtonState();
-}
 
-class _LaterButtonState extends State<_LaterButton> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) {
-        setState(() => _down = false);
-        widget.onTap();
-      },
-      onTapCancel: () => setState(() => _down = false),
-      child: AnimatedOpacity(
-        opacity: _down ? 0.5 : 0.9,
-        duration: const Duration(milliseconds: 80),
-        child: Image.asset(
-          AssetPaths.skip,
-          height: widget.compact ? 34 : 50,
-          fit: BoxFit.contain,
-          errorBuilder: (_, e, s) => _Fallback(
-            label: 'Skip',
-            tint: Colors.white,
-            compact: widget.compact,
-            outlined: true,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _Fallback extends StatelessWidget {
-  final String label;
-  final Color tint;
-  final bool compact;
-  final bool outlined;
-
-  const _Fallback({
-    required this.label,
-    required this.tint,
-    this.compact = false,
-    this.outlined = false,
+  const _SkipButton({
+    required this.width,
+    required this.compact,
+    required this.onTap,
   });
 
   @override
+  State<_SkipButton> createState() => _SkipButtonState();
+}
+
+class _SkipButtonState extends State<_SkipButton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _breathe;
+  bool _down = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _breathe = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _breathe.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: compact ? 10 : 16,
-        horizontal: compact ? 24 : 40,
-      ),
-      decoration: BoxDecoration(
-        color: outlined ? Colors.transparent : tint.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(16),
-        border: outlined ? Border.all(color: tint, width: 2) : null,
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: outlined ? tint : Colors.black,
-          fontSize: compact ? 16 : 20,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 2,
+    final height = widget.compact ? 38.0 : 48.0;
+    final fontSize = widget.compact ? 13.0 : 16.0;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) {
+        setState(() => _down = false);
+        widget.onTap();
+      },
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 90),
+        child: AnimatedBuilder(
+          animation: _breathe,
+          builder: (_, _) {
+            final t = _breathe.value;
+            return SizedBox(
+              width: widget.width,
+              height: height,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(height / 2),
+                  color: Colors.black.withValues(alpha: _down ? 0.5 : 0.35),
+                  border: Border.all(
+                    color: const Color(0xFFF6C54A)
+                        .withValues(alpha: 0.55 + 0.25 * t),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF6C54A)
+                          .withValues(alpha: 0.12 * t),
+                      blurRadius: 10 + 8 * t,
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Skip',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 2,
+                      shadows: const [
+                        Shadow(
+                          color: Colors.black54,
+                          blurRadius: 2,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
