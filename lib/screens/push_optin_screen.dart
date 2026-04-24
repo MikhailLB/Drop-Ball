@@ -150,29 +150,32 @@ class _PushOptInScreenState extends State<PushOptInScreen> {
   }
 
   Widget _buildActions(Size size, bool landscape) {
-    final acceptWidth = landscape ? size.width * 0.32 : size.width * 0.72;
-    final skipWidth = landscape ? size.width * 0.22 : size.width * 0.50;
-    final topFraction = landscape ? 0.64 : 0.60;
+    final acceptWidth = landscape ? size.width * 0.26 : size.width * 0.58;
+    final skipWidth = landscape ? size.width * 0.18 : size.width * 0.40;
+    final bottomPadding = landscape ? size.height * 0.10 : size.height * 0.09;
 
     return Positioned(
       left: 0,
       right: 0,
-      top: size.height * topFraction,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _GoldAcceptButton(
-            width: acceptWidth,
-            compact: landscape,
-            onTap: _accept,
-          ),
-          SizedBox(height: landscape ? 12 : 18),
-          _SkipButton(
-            width: skipWidth,
-            compact: landscape,
-            onTap: _skip,
-          ),
-        ],
+      bottom: bottomPadding,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _GoldAcceptButton(
+              width: acceptWidth,
+              compact: landscape,
+              onTap: _accept,
+            ),
+            SizedBox(height: landscape ? 8 : 12),
+            _SkipButton(
+              width: skipWidth,
+              compact: landscape,
+              onTap: _skip,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -227,8 +230,8 @@ class _GoldAcceptButtonState extends State<_GoldAcceptButton>
 
   @override
   Widget build(BuildContext context) {
-    final height = widget.compact ? 48.0 : 62.0;
-    final fontSize = widget.compact ? 16.0 : 20.0;
+    final height = widget.compact ? 40.0 : 50.0;
+    final fontSize = widget.compact ? 13.0 : 17.0;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -408,8 +411,8 @@ class _SkipButtonState extends State<_SkipButton>
 
   @override
   Widget build(BuildContext context) {
-    final height = widget.compact ? 38.0 : 48.0;
-    final fontSize = widget.compact ? 13.0 : 16.0;
+    final height = widget.compact ? 30.0 : 38.0;
+    final fontSize = widget.compact ? 11.0 : 14.0;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
