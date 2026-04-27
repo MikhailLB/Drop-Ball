@@ -3,7 +3,10 @@ class AssetPaths {
 
   // Skins
   static const String blueSphere = 'assets/game_assets/blue_sphere_asset.webp';
+  static const String groundSphere = 'assets/game_assets/ground_sphere_asset.webp';
   static const String greenSphere = 'assets/game_assets/green_sphere_asset.webp';
+  static const String aquaSphere = 'assets/game_assets/aqua_sphere_asset.webp';
+  static const String airSphere = 'assets/game_assets/air_sphere_asset.webp';
   static const String yellowSphere = 'assets/game_assets/yellow_sphere_asset.webp';
   static const String redSphere = 'assets/game_assets/red_sphere_asset.webp';
   static const String purpleSphere = 'assets/game_assets/purple_sphere_asset.webp';
@@ -47,7 +50,8 @@ class AssetPaths {
   static const String nfHorizontal = 'assets/add_screens/nf_horizontal_screen.mp4';
 
   static const List<String> allImages = [
-    blueSphere, greenSphere, yellowSphere, redSphere, purpleSphere,
+    blueSphere, groundSphere, greenSphere, aquaSphere, airSphere,
+    yellowSphere, redSphere, purpleSphere,
     greenPipe, redPipeWithSkull, redPipeWithoutSkull,
     greenCircle, circleWith2x, circleWithSkull, asset2x,
     blueSpike, redSpike,

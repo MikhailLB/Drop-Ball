@@ -15,7 +15,10 @@ class SpriteCache {
       game.loadSprite('game_assets/circle_with_2x_inside.webp'),
       game.loadSprite('game_assets/circle_with_skull_inside.webp'),
       game.loadSprite('game_assets/blue_sphere_asset.webp'),
+      game.loadSprite('game_assets/ground_sphere_asset.webp'),
       game.loadSprite('game_assets/green_sphere_asset.webp'),
+      game.loadSprite('game_assets/aqua_sphere_asset.webp'),
+      game.loadSprite('game_assets/air_sphere_asset.webp'),
       game.loadSprite('game_assets/yellow_sphere_asset.webp'),
       game.loadSprite('game_assets/red_sphere_asset.webp'),
       game.loadSprite('game_assets/purple_sphere_asset.webp'),
@@ -26,10 +29,13 @@ class SpriteCache {
     circleSkull = results[2];
     spheres = {
       'blue': results[3],
-      'green': results[4],
-      'yellow': results[5],
-      'red': results[6],
-      'purple': results[7],
+      'ground': results[4],
+      'green': results[5],
+      'aqua': results[6],
+      'air': results[7],
+      'yellow': results[8],
+      'red': results[9],
+      'purple': results[10],
     };
   }
 
