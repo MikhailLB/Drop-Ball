@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import '../models/runtime_mode.dart';
 import '../services/attribution_gateway.dart';
 import '../services/cloud_push_client.dart';
@@ -36,51 +35,13 @@ class BootScreen extends StatefulWidget {
 }
 
 class _BootScreenState extends State<BootScreen> {
-  VideoPlayerController? _player;
-  bool _playerReady = false;
   _ProgressStage _stage = _ProgressStage.start;
   bool _leaving = false;
-  Orientation? _lastOrientation;
 
   @override
   void initState() {
     super.initState();
     _kickoff();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final orientation = MediaQuery.of(context).orientation;
-    if (orientation != _lastOrientation) {
-      _lastOrientation = orientation;
-      _loadVideo(orientation);
-    }
-  }
-
-  Future<void> _loadVideo(Orientation orientation) async {
-    final asset = orientation == Orientation.landscape
-        ? AssetPaths.loadingHorizontal
-        : AssetPaths.loadingVertical;
-    final previous = _player;
-    final next = VideoPlayerController.asset(asset);
-    try {
-      await next.initialize();
-      next.setLooping(true);
-      next.setVolume(0);
-      next.play();
-      if (!mounted) {
-        next.dispose();
-        return;
-      }
-      setState(() {
-        _player = next;
-        _playerReady = true;
-      });
-      previous?.dispose();
-    } catch (_) {
-      next.dispose();
-    }
   }
 
   Future<void> _kickoff() async {
@@ -274,15 +235,13 @@ class _BootScreenState extends State<BootScreen> {
   @override
   void dispose() {
     widget.push.onTokenRotate = null;
-    _player?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
-    final landscape = _lastOrientation == Orientation.landscape ||
-        mq.orientation == Orientation.landscape;
+    final landscape = mq.orientation == Orientation.landscape;
     final barAsset = switch (_stage) {
       _ProgressStage.start => AssetPaths.loadingBarEmpty,
       _ProgressStage.midway => AssetPaths.loadingBarAlmostFull,
@@ -294,23 +253,7 @@ class _BootScreenState extends State<BootScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          _buildFallbackLoading(landscape),
-          AnimatedOpacity(
-            opacity: _playerReady ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 400),
-            child: _player != null && _playerReady
-                ? SizedBox.expand(
-                    child: FittedBox(
-                      fit: BoxFit.cover,
-                      child: SizedBox(
-                        width: _player!.value.size.width,
-                        height: _player!.value.size.height,
-                        child: VideoPlayer(_player!),
-                      ),
-                    ),
-                  )
-                : const SizedBox.shrink(),
-          ),
+          _buildBrandedSplash(landscape),
           _buildProgressBar(
             barAsset: barAsset,
             landscape: landscape,
@@ -321,7 +264,7 @@ class _BootScreenState extends State<BootScreen> {
     );
   }
 
-  Widget _buildFallbackLoading(bool landscape) {
+  Widget _buildBrandedSplash(bool landscape) {
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: RadialGradient(

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../config/brand_config.dart';
 import '../config/endpoint_registry.dart';
 import 'browser_http.dart';
@@ -57,15 +58,20 @@ class AttributionGateway {
       if (kDebugMode) {
         debugPrint('[AG] ATT current status: $current');
       }
-      if (current == TrackingStatus.notDetermined) {
-        // Tiny delay so the prompt does not collide with any other
-        // system dialog that might have just been dismissed.
-        await Future<void>.delayed(const Duration(milliseconds: 250));
-        final granted =
-            await AppTrackingTransparency.requestTrackingAuthorization();
-        if (kDebugMode) {
-          debugPrint('[AG] ATT user decision: $granted');
-        }
+      if (current != TrackingStatus.notDetermined) return;
+
+      // iOS only shows the ATT prompt when the app is in
+      // UIApplicationStateActive. Calling it from initState() is too
+      // early — the app is still inactive and the system silently
+      // drops the prompt. Wait for the first frame, then add a small
+      // breathing delay so we are guaranteed to be active.
+      await WidgetsBinding.instance.endOfFrame;
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+
+      final granted =
+          await AppTrackingTransparency.requestTrackingAuthorization();
+      if (kDebugMode) {
+        debugPrint('[AG] ATT user decision: $granted');
       }
     } catch (err) {
       if (kDebugMode) {
