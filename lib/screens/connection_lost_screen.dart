@@ -1,10 +1,17 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/network_monitor.dart';
 import '../utils/asset_paths.dart';
 
 class ConnectionLostScreen extends StatefulWidget {
   final WidgetBuilder retryBuilder;
+  final NetworkMonitor net;
 
-  const ConnectionLostScreen({super.key, required this.retryBuilder});
+  const ConnectionLostScreen({
+    super.key,
+    required this.retryBuilder,
+    required this.net,
+  });
 
   @override
   State<ConnectionLostScreen> createState() => _ConnectionLostScreenState();
@@ -13,6 +20,8 @@ class ConnectionLostScreen extends StatefulWidget {
 class _ConnectionLostScreenState extends State<ConnectionLostScreen>
     with SingleTickerProviderStateMixin {
   bool _busy = false;
+  bool _showHint = false;
+  Timer? _hintTimer;
   late final AnimationController _pulse;
   late final Animation<double> _scale;
 
@@ -30,6 +39,7 @@ class _ConnectionLostScreenState extends State<ConnectionLostScreen>
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _pulse.dispose();
     super.dispose();
   }
@@ -38,9 +48,24 @@ class _ConnectionLostScreenState extends State<ConnectionLostScreen>
     if (_busy) return;
     await _pulse.forward();
     await _pulse.reverse();
-    setState(() => _busy = true);
-    await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
+    setState(() => _busy = true);
+
+    final online = await widget.net.isOnline();
+    if (!mounted) return;
+
+    if (!online) {
+      _hintTimer?.cancel();
+      setState(() {
+        _busy = false;
+        _showHint = true;
+      });
+      _hintTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) setState(() => _showHint = false);
+      });
+      return;
+    }
+
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: widget.retryBuilder),
     );
@@ -48,38 +73,103 @@ class _ConnectionLostScreenState extends State<ConnectionLostScreen>
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final landscape = mq.orientation == Orientation.landscape;
+    final bgAsset = landscape ? AssetPaths.noWifiHorizontal : AssetPaths.noWifi;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
           Image.asset(
-            AssetPaths.noWifi,
+            bgAsset,
             fit: BoxFit.cover,
             errorBuilder: (_, e, s) => const ColoredBox(color: Colors.black),
           ),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(
-                    bottom: 60, left: 36, right: 36),
-                child: ScaleTransition(
-                  scale: _scale,
-                  child: _buildButton(),
+          if (landscape)
+            _buildLandscapeButton(mq)
+          else
+            _buildPortraitButton(mq),
+        ],
+      ),
+    );
+  }
+
+  // Portrait: кнопка по центру снизу, хинт над кнопкой
+  Widget _buildPortraitButton(MediaQueryData mq) {
+    return SafeArea(
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 60, left: 36, right: 36),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedOpacity(
+                opacity: _showHint ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: const Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    'No connection. Check your internet.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                    ),
+                  ),
                 ),
               ),
+              ScaleTransition(
+                scale: _scale,
+                child: _buildButton(width: double.infinity, height: 52),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Landscape: кнопка меньше, по центру, ниже; хинт над кнопкой
+  Widget _buildLandscapeButton(MediaQueryData mq) {
+    final btnWidth = mq.size.width * 0.30;
+    final bottomPad = mq.padding.bottom + 14.0;
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: bottomPad,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          AnimatedOpacity(
+            opacity: _showHint ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 300),
+            child: const Padding(
+              padding: EdgeInsets.only(bottom: 6),
+              child: Text(
+                'No connection. Check your internet.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
             ),
+          ),
+          ScaleTransition(
+            scale: _scale,
+            child: _buildButton(width: btnWidth, height: 44),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildButton() {
+  Widget _buildButton({required double width, required double height}) {
     return SizedBox(
-      width: double.infinity,
-      height: 56,
+      width: width,
+      height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: _busy

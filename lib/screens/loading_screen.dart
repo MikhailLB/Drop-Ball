@@ -19,8 +19,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   bool _started = false;
 
   static const _barAssets = [
-    AssetPaths.loadingBarStart,
-    AssetPaths.loadingBarHalf,
+    AssetPaths.loadingBarEmpty,
     AssetPaths.loadingBarAlmostFull,
     AssetPaths.loadingBarFull,
   ];

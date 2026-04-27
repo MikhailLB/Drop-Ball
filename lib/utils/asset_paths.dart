@@ -27,8 +27,6 @@ class AssetPaths {
   static const String background = 'assets/game_assets/backround_asset.webp';
 
   // Loading screen
-  static const String loadingBarStart = 'assets/loading_screen/loading_bar_start.webp';
-  static const String loadingBarHalf = 'assets/loading_screen/loading_bar_half.webp';
   static const String loadingBarAlmostFull = 'assets/loading_screen/loading_bar_almost_full.webp';
   static const String loadingBarFull = 'assets/loading_screen/loading_bar_full.webp';
   static const String loadingBarEmpty = 'assets/loading_screen/loading_bar_empty.webp';
@@ -40,6 +38,7 @@ class AssetPaths {
 
   // No WiFi
   static const String noWifi = 'assets/NO WIFI/no_wifi_screen.webp';
+  static const String noWifiHorizontal = 'assets/NO WIFI/no_wifi_screen_horizontal.webp';
 
   // Ad screens
   static const String nfVertical = 'assets/add_screens/nf_vertical_screen.mp4';
@@ -51,7 +50,7 @@ class AssetPaths {
     greenCircle, circleWith2x, circleWithSkull, asset2x,
     blueSpike, redSpike,
     background,
-    loadingBarStart, loadingBarHalf, loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
-    logo, noWifi,
+    loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
+    logo, noWifi, noWifiHorizontal,
   ];
 }

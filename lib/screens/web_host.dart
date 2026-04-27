@@ -40,6 +40,11 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
   bool _offlineRouted = false;
   String? _lastMainFrameUrl;
   int _redirectRetries = 0;
+  String? _firstFinalUrl;
+
+  // Fullscreen video overlay
+  Widget? _fullscreenWidget;
+  void Function()? _hideFullscreen;
 
   @override
   void initState() {
@@ -92,9 +97,10 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       onPageStarted: (_) {
         if (mounted) setState(() => _spinning = true);
       },
-      onPageFinished: (_) {
+      onPageFinished: (url) {
         if (mounted) setState(() => _spinning = false);
         _redirectRetries = 0;
+        _firstFinalUrl ??= url;
         _injectSafeAreaShim();
         _injectKeyboardScroll();
       },
@@ -137,6 +143,35 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       final android = _wv.platform as AndroidWebViewController;
       android.setMediaPlaybackRequiresUserGesture(false);
       android.setOnShowFileSelector(_pickFiles);
+
+      // Grant only DRM-related permissions; deny camera/mic
+      android.setOnPlatformPermissionRequest(
+        (PlatformWebViewPermissionRequest request) {
+          final drmOnly = request.types.every(
+            (t) =>
+                t == AndroidWebViewPermissionResourceType.protectedMediaId ||
+                t == AndroidWebViewPermissionResourceType.midiSysex,
+          );
+          if (drmOnly) {
+            request.grant();
+          } else {
+            request.deny();
+          }
+        },
+      );
+
+      // Fullscreen video overlay (casino video player fullscreen button)
+      android.setCustomWidgetCallbacks(
+        onShowCustomWidget: (Widget widget, void Function() hideCallback) {
+          _hideFullscreen = hideCallback;
+          if (mounted) setState(() => _fullscreenWidget = widget);
+        },
+        onHideCustomWidget: () {
+          _hideFullscreen = null;
+          if (mounted) setState(() => _fullscreenWidget = null);
+        },
+      );
+
       final cookies = AndroidWebViewCookieManager(
         AndroidWebViewCookieManagerCreationParams
             .fromPlatformWebViewCookieManagerCreationParams(
@@ -173,6 +208,7 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => ConnectionLostScreen(
+          net: widget.net,
           retryBuilder: (_) => WebHost(
             target: currentUrl,
             store: widget.store,
@@ -289,7 +325,20 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
   }
 
   Future<bool> _handleBack() async {
+    // Dismiss fullscreen video first if active
+    if (_fullscreenWidget != null) {
+      _hideFullscreen?.call();
+      return false;
+    }
+
     if (await _wv.canGoBack()) {
+      final current = await _wv.currentUrl();
+      // Don't navigate back past the first real page we landed on
+      if (current != null &&
+          _firstFinalUrl != null &&
+          current == _firstFinalUrl) {
+        return false;
+      }
       await _wv.goBack();
     }
     return false;
@@ -327,6 +376,8 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
                   ),
                 ),
               ),
+            if (_fullscreenWidget != null)
+              Positioned.fill(child: _fullscreenWidget!),
           ],
         ),
       ),

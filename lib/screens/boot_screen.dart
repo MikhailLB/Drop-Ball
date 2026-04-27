@@ -250,6 +250,7 @@ class _BootScreenState extends State<BootScreen> {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => ConnectionLostScreen(
+          net: widget.net,
           retryBuilder: (_) => BootScreen(
             store: widget.store,
             net: widget.net,
@@ -308,23 +309,35 @@ class _BootScreenState extends State<BootScreen> {
                 : const SizedBox.shrink(),
           ),
           if (_playerReady)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: MediaQuery.of(context).padding.bottom + 60,
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  child: Image.asset(
-                    barAsset,
-                    key: ValueKey(barAsset),
-                    width: 250,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    errorBuilder: (_, e, s) => const SizedBox(height: 30),
+            Builder(
+              builder: (ctx) {
+                final mq = MediaQuery.of(ctx);
+                final landscape =
+                    _lastOrientation == Orientation.landscape;
+                final bottom = mq.padding.bottom +
+                    (landscape
+                        ? mq.size.height * 0.03
+                        : mq.size.height * 0.06);
+                return Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: bottom,
+                  child: Center(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Image.asset(
+                        barAsset,
+                        key: ValueKey(barAsset),
+                        width: landscape ? 200 : 250,
+                        fit: BoxFit.contain,
+                        filterQuality: FilterQuality.high,
+                        errorBuilder: (_, e, s) =>
+                            const SizedBox(height: 30),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
         ],
       ),

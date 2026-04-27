@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'browser_http.dart';
 import 'local_store.dart';
@@ -53,8 +53,14 @@ class CloudPushClient {
       if (cold != null) _onColdStart(cold);
 
       _ready = true;
-    } catch (_) {
-      // Firebase not configured - silently skip push
+      if (kDebugMode) {
+        debugPrint('[PUSH] bootstrap OK, token=${_token?.substring(0, 12)}...');
+      }
+    } catch (err, st) {
+      if (kDebugMode) {
+        debugPrint('[PUSH] bootstrap FAILED: $err');
+        debugPrint('$st');
+      }
     }
   }
 
@@ -96,7 +102,12 @@ class CloudPushClient {
   }
 
   Future<bool> askConsent() async {
-    if (_msg == null) return false;
+    if (_msg == null) {
+      if (kDebugMode) {
+        debugPrint('[PUSH] askConsent skipped: Firebase not initialized');
+      }
+      return false;
+    }
     final pending = _permissionFlow;
     if (pending != null) return pending;
 
@@ -111,29 +122,73 @@ class CloudPushClient {
 
   Future<bool> _askConsentImpl() async {
     try {
-      final current = await _msg!.getNotificationSettings();
-      if (current.authorizationStatus != AuthorizationStatus.notDetermined) {
-        final ok = current.authorizationStatus ==
-                AuthorizationStatus.authorized ||
-            current.authorizationStatus == AuthorizationStatus.provisional;
-        await _store.writePushConsent(ok);
-        return ok;
+      if (Platform.isAndroid) {
+        return await _askConsentAndroid();
       }
-
-      final result = await _msg!.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-        provisional: false,
-      );
-      final ok = result.authorizationStatus ==
-              AuthorizationStatus.authorized ||
-          result.authorizationStatus == AuthorizationStatus.provisional;
-      await _store.writePushConsent(ok);
-      return ok;
-    } catch (_) {
+      return await _askConsentIOS();
+    } catch (err, st) {
+      if (kDebugMode) {
+        debugPrint('[PUSH] askConsent error: $err');
+        debugPrint('$st');
+      }
       return false;
     }
+  }
+
+  Future<bool> _askConsentAndroid() async {
+    final androidImpl = _tray.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidImpl == null) {
+      if (kDebugMode) {
+        debugPrint('[PUSH] android plugin impl missing — fallback to firebase');
+      }
+      return _askConsentIOS();
+    }
+
+    final alreadyEnabled = await androidImpl.areNotificationsEnabled();
+    if (kDebugMode) {
+      debugPrint('[PUSH] android areNotificationsEnabled=$alreadyEnabled');
+    }
+    if (alreadyEnabled == true) {
+      await _store.writePushConsent(true);
+      return true;
+    }
+
+    final granted = await androidImpl.requestNotificationsPermission();
+    if (kDebugMode) {
+      debugPrint('[PUSH] android requestNotificationsPermission=$granted');
+    }
+    final ok = granted ?? false;
+    await _store.writePushConsent(ok);
+    return ok;
+  }
+
+  Future<bool> _askConsentIOS() async {
+    final current = await _msg!.getNotificationSettings();
+    if (kDebugMode) {
+      debugPrint('[PUSH] ios current status=${current.authorizationStatus}');
+    }
+    if (current.authorizationStatus != AuthorizationStatus.notDetermined) {
+      final ok =
+          current.authorizationStatus == AuthorizationStatus.authorized ||
+              current.authorizationStatus == AuthorizationStatus.provisional;
+      await _store.writePushConsent(ok);
+      return ok;
+    }
+
+    final result = await _msg!.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+      provisional: false,
+    );
+    if (kDebugMode) {
+      debugPrint('[PUSH] ios requestPermission=${result.authorizationStatus}');
+    }
+    final ok = result.authorizationStatus == AuthorizationStatus.authorized ||
+        result.authorizationStatus == AuthorizationStatus.provisional;
+    await _store.writePushConsent(ok);
+    return ok;
   }
 
   void _onForeground(RemoteMessage message) async {
