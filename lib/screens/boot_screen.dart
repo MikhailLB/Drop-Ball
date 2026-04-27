@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/runtime_mode.dart';
 import '../services/attribution_gateway.dart';
 import '../services/cloud_push_client.dart';
@@ -41,6 +42,15 @@ class _BootScreenState extends State<BootScreen> {
   @override
   void initState() {
     super.initState();
+    // Other screens (game flow) lock portrait. When BootScreen is
+    // entered after them (e.g. retry from offline), make sure the
+    // splash itself can be shown in any orientation.
+    SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     _kickoff();
   }
 
@@ -240,8 +250,6 @@ class _BootScreenState extends State<BootScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final landscape = mq.orientation == Orientation.landscape;
     final barAsset = switch (_stage) {
       _ProgressStage.start => AssetPaths.loadingBarEmpty,
       _ProgressStage.midway => AssetPaths.loadingBarAlmostFull,
@@ -250,21 +258,35 @@ class _BootScreenState extends State<BootScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          _buildBrandedSplash(landscape),
-          _buildProgressBar(
-            barAsset: barAsset,
-            landscape: landscape,
-            media: mq,
-          ),
-        ],
+      body: OrientationBuilder(
+        builder: (context, orientation) {
+          final landscape = orientation == Orientation.landscape;
+          final media = MediaQuery.of(context);
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildBrandedSplash(landscape, media),
+              _buildProgressBar(
+                barAsset: barAsset,
+                landscape: landscape,
+                media: media,
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildBrandedSplash(bool landscape) {
+  Widget _buildBrandedSplash(bool landscape, MediaQueryData media) {
+    final shortest = media.size.shortestSide;
+    final logoSize = landscape ? shortest * 0.32 : shortest * 0.42;
+    final titleSize = landscape ? 22.0 : 30.0;
+    final loadingSize = landscape ? 13.0 : 17.0;
+    final verticalOffset = landscape
+        ? -media.size.height * 0.05
+        : -media.size.height * 0.07;
+
     return DecoratedBox(
       decoration: const BoxDecoration(
         gradient: RadialGradient(
@@ -279,40 +301,40 @@ class _BootScreenState extends State<BootScreen> {
       ),
       child: Center(
         child: Transform.translate(
-          offset: Offset(0, landscape ? -18 : -42),
+          offset: Offset(0, verticalOffset),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset(
                 AssetPaths.logo,
-                width: landscape ? 122 : 154,
-                height: landscape ? 122 : 154,
+                width: logoSize,
+                height: logoSize,
                 fit: BoxFit.contain,
                 errorBuilder: (context, error, stackTrace) => SizedBox(
-                  width: landscape ? 122 : 154,
-                  height: landscape ? 122 : 154,
+                  width: logoSize,
+                  height: logoSize,
                 ),
               ),
-              SizedBox(height: landscape ? 8 : 18),
-              const Text(
+              SizedBox(height: landscape ? 6 : 18),
+              Text(
                 'GRAVITY RUSH',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.cyanAccent,
-                  fontSize: 30,
+                  fontSize: titleSize,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 5,
-                  shadows: [
-                    Shadow(color: Colors.cyanAccent, blurRadius: 20),
+                  letterSpacing: 4,
+                  shadows: const [
+                    Shadow(color: Colors.cyanAccent, blurRadius: 18),
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: landscape ? 6 : 12),
               Text(
                 'LOADING',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.86),
-                  fontSize: landscape ? 16 : 18,
+                  fontSize: loadingSize,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 4,
                 ),
@@ -330,7 +352,10 @@ class _BootScreenState extends State<BootScreen> {
     required MediaQueryData media,
   }) {
     final bottom = media.padding.bottom +
-        (landscape ? media.size.height * 0.03 : media.size.height * 0.06);
+        (landscape ? media.size.height * 0.04 : media.size.height * 0.06);
+    final width = landscape
+        ? media.size.width * 0.25
+        : media.size.width * 0.6;
 
     return Positioned(
       left: 0,
@@ -342,7 +367,7 @@ class _BootScreenState extends State<BootScreen> {
           child: Image.asset(
             barAsset,
             key: ValueKey(barAsset),
-            width: landscape ? 200 : 250,
+            width: width.clamp(160.0, 280.0),
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
             errorBuilder: (context, error, stackTrace) =>
