@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../models/skin_data.dart';
 import '../utils/asset_paths.dart';
+import 'in_app_web_page.dart';
 
 class MainMenuScreen extends StatefulWidget {
   final void Function(SkinData skin) onPlay;
@@ -205,8 +205,11 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   Widget _linkButton(String label, String url) {
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => InAppWebPage(title: label, url: url),
+        ),
+      ),
       child: Text(
         label,
         style: TextStyle(
