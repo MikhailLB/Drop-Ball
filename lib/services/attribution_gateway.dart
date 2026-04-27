@@ -43,6 +43,10 @@ class AttributionGateway {
       registerOnAppOpenAttributionCallback: true,
       registerOnDeepLinkingCallback: true,
     );
+
+    if (kDebugMode) {
+      await _dumpTrackingDebugInfo();
+    }
   }
 
   Future<void> _requestTrackingAuthorization() async {
@@ -50,16 +54,42 @@ class AttributionGateway {
     try {
       final current =
           await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (kDebugMode) {
+        debugPrint('[AG] ATT current status: $current');
+      }
       if (current == TrackingStatus.notDetermined) {
         // Tiny delay so the prompt does not collide with any other
         // system dialog that might have just been dismissed.
         await Future<void>.delayed(const Duration(milliseconds: 250));
-        await AppTrackingTransparency.requestTrackingAuthorization();
+        final granted =
+            await AppTrackingTransparency.requestTrackingAuthorization();
+        if (kDebugMode) {
+          debugPrint('[AG] ATT user decision: $granted');
+        }
       }
     } catch (err) {
       if (kDebugMode) {
         debugPrint('[AG] ATT request failed: $err');
       }
+    }
+  }
+
+  /// Debug helper: print tracking status, IDFA and AppsFlyer UID so the
+  /// device can be registered as an AppsFlyer Test Device and tracking
+  /// links can be built with `&advertising_id=<IDFA>`.
+  Future<void> _dumpTrackingDebugInfo() async {
+    try {
+      if (Platform.isIOS) {
+        final status =
+            await AppTrackingTransparency.trackingAuthorizationStatus;
+        debugPrint('[AG] tracking status (post-init): $status');
+        final idfa = await AppTrackingTransparency.getAdvertisingIdentifier();
+        debugPrint('[AG] IDFA: $idfa');
+      }
+      final uid = await _provider?.getAppsFlyerUID();
+      debugPrint('[AG] AppsFlyer UID: $uid');
+    } catch (err) {
+      debugPrint('[AG] debug dump failed: $err');
     }
   }
 
