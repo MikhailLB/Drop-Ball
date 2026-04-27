@@ -280,6 +280,9 @@ class _BootScreenState extends State<BootScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final landscape = _lastOrientation == Orientation.landscape ||
+        mq.orientation == Orientation.landscape;
     final barAsset = switch (_stage) {
       _ProgressStage.start => AssetPaths.loadingBarEmpty,
       _ProgressStage.midway => AssetPaths.loadingBarAlmostFull,
@@ -291,7 +294,7 @@ class _BootScreenState extends State<BootScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          const ColoredBox(color: Colors.black),
+          _buildFallbackLoading(landscape),
           AnimatedOpacity(
             opacity: _playerReady ? 1.0 : 0.0,
             duration: const Duration(milliseconds: 400),
@@ -308,38 +311,101 @@ class _BootScreenState extends State<BootScreen> {
                   )
                 : const SizedBox.shrink(),
           ),
-          if (_playerReady)
-            Builder(
-              builder: (ctx) {
-                final mq = MediaQuery.of(ctx);
-                final landscape =
-                    _lastOrientation == Orientation.landscape;
-                final bottom = mq.padding.bottom +
-                    (landscape
-                        ? mq.size.height * 0.03
-                        : mq.size.height * 0.06);
-                return Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: bottom,
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Image.asset(
-                        barAsset,
-                        key: ValueKey(barAsset),
-                        width: landscape ? 200 : 250,
-                        fit: BoxFit.contain,
-                        filterQuality: FilterQuality.high,
-                        errorBuilder: (_, e, s) =>
-                            const SizedBox(height: 30),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
+          _buildProgressBar(
+            barAsset: barAsset,
+            landscape: landscape,
+            media: mq,
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackLoading(bool landscape) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 1.1,
+          colors: [
+            Color(0xFF17134A),
+            Color(0xFF070714),
+            Colors.black,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Transform.translate(
+          offset: Offset(0, landscape ? -18 : -42),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                AssetPaths.logo,
+                width: landscape ? 122 : 154,
+                height: landscape ? 122 : 154,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => SizedBox(
+                  width: landscape ? 122 : 154,
+                  height: landscape ? 122 : 154,
+                ),
+              ),
+              SizedBox(height: landscape ? 8 : 18),
+              const Text(
+                'GRAVITY RUSH',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.cyanAccent,
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 5,
+                  shadows: [
+                    Shadow(color: Colors.cyanAccent, blurRadius: 20),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'LOADING',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.86),
+                  fontSize: landscape ? 16 : 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressBar({
+    required String barAsset,
+    required bool landscape,
+    required MediaQueryData media,
+  }) {
+    final bottom = media.padding.bottom +
+        (landscape ? media.size.height * 0.03 : media.size.height * 0.06);
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: bottom,
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: Image.asset(
+            barAsset,
+            key: ValueKey(barAsset),
+            width: landscape ? 200 : 250,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (context, error, stackTrace) =>
+                const SizedBox(height: 30),
+          ),
+        ),
       ),
     );
   }
