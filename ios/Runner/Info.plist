@@ -63,6 +63,8 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIRequiresFullScreen</key>
+	<true/>
 	<key>UIStatusBarHidden</key>
 	<true/>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
@@ -87,39 +89,21 @@
 		<true/>
 	</dict>
 	<key>NSUserTrackingUsageDescription</key>
-	<string>We use this identifier to show you relevant content and measure app performance.</string>
+	<string>Your data will be used to measure advertising effectiveness and to deliver personalized content within this app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Photo library access is used to upload images within the app.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>We may save images to your photo library.</string>
+	<string>Photo library access is used to attach images when uploading files inside the app.</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>fetch</string>
 		<string>remote-notification</string>
 	</array>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>com.gsteamgsgames.gravityrush</string>
-			</array>
-		</dict>
-	</array>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
-	<key>ITSAppUsesNonExemptEncryption</key>
-	<false/>
-	<key>UIStatusBarHidden</key>
 	<true/>
-	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<false/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>
 		<string>http</string>
+		<string>tel</string>
+		<string>mailto</string>
 	</array>
 </dict>
 </plist>

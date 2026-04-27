@@ -18,6 +18,9 @@ Future<void> _safeFirebase() async {
       androidProvider: kDebugMode
           ? AndroidProvider.debug
           : AndroidProvider.playIntegrity,
+      appleProvider: kDebugMode
+          ? AppleProvider.debug
+          : AppleProvider.appAttestWithDeviceCheckFallback,
     );
   } catch (_) {}
 }

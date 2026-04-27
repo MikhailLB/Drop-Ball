@@ -28,9 +28,13 @@ const _cloudProjectIdIos = [
 
 abstract final class BrandConfig {
   static const packageName = 'com.gsteamgsgames.gravityrush';
-  static const storeIdentifier = 'com.gsteamgsgames.gravityrush';
   static const displayTitle = 'Gravity Rush';
   static const iosAppId = '6763416861';
+
+  /// AppsFlyer expects the iOS store identifier prefixed with `id`,
+  /// while Android keeps the package name. See product spec.
+  static String get storeIdentifier =>
+      Platform.isIOS ? 'id$iosAppId' : packageName;
 
   static const cooldownSeconds = 259200;
   static const refreshDelaySeconds = 5;

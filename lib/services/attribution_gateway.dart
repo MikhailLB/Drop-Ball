@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 import 'package:flutter/foundation.dart';
 import '../config/brand_config.dart';
@@ -20,6 +21,11 @@ class AttributionGateway {
     if (_started) return;
     _started = true;
 
+    // iOS 14.5+ requires explicit ATT before any tracking SDK can read IDFA.
+    // AppsFlyer waits for the decision (timeToWaitForATTUserAuthorization),
+    // but the prompt itself has to be triggered by the host app.
+    await _requestTrackingAuthorization();
+
     final opts = AppsFlyerOptions(
       afDevKey: BrandConfig.attributionDevKey,
       appId: BrandConfig.iosAppId,
@@ -37,6 +43,24 @@ class AttributionGateway {
       registerOnAppOpenAttributionCallback: true,
       registerOnDeepLinkingCallback: true,
     );
+  }
+
+  Future<void> _requestTrackingAuthorization() async {
+    if (!Platform.isIOS) return;
+    try {
+      final current =
+          await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (current == TrackingStatus.notDetermined) {
+        // Tiny delay so the prompt does not collide with any other
+        // system dialog that might have just been dismissed.
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+    } catch (err) {
+      if (kDebugMode) {
+        debugPrint('[AG] ATT request failed: $err');
+      }
+    }
   }
 
   Map<String, dynamic> _unwrap(dynamic raw) {
