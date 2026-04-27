@@ -27,6 +27,8 @@ class AssetPaths {
   static const String background = 'assets/game_assets/backround_asset.webp';
 
   // Loading screen
+  static const String loadingBarStart = 'assets/loading_screen/loading_bar_start.webp';
+  static const String loadingBarHalf = 'assets/loading_screen/loading_bar_half.webp';
   static const String loadingBarAlmostFull = 'assets/loading_screen/loading_bar_almost_full.webp';
   static const String loadingBarFull = 'assets/loading_screen/loading_bar_full.webp';
   static const String loadingBarEmpty = 'assets/loading_screen/loading_bar_empty.webp';
@@ -50,7 +52,7 @@ class AssetPaths {
     greenCircle, circleWith2x, circleWithSkull, asset2x,
     blueSpike, redSpike,
     background,
-    loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
+    loadingBarStart, loadingBarHalf, loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
     logo, noWifi, noWifiHorizontal,
   ];
 }

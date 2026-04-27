@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import '../utils/asset_paths.dart';
 
 class LoadingScreen extends StatefulWidget {
@@ -12,9 +11,7 @@ class LoadingScreen extends StatefulWidget {
 }
 
 class _LoadingScreenState extends State<LoadingScreen> {
-  VideoPlayerController? _videoController;
   int _barState = 0;
-  bool _videoReady = false;
   bool _showBar = false;
   bool _started = false;
 
@@ -34,37 +31,16 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   Future<void> _start() async {
-    // 1. Init and start video first
-    await _initVideo();
+    if (mounted) setState(() => _showBar = true);
 
-    // 2. Precache loading bar images
     for (final path in _barAssets) {
       if (!mounted) return;
-      await precacheImage(AssetImage(path), context);
+      try {
+        await precacheImage(AssetImage(path), context);
+      } catch (_) {}
     }
-    if (!mounted) return;
-    setState(() => _showBar = true);
 
-    // 3. Load game assets with bar progress
     await _runLoadingSequence();
-  }
-
-  Future<void> _initVideo() async {
-    if (!mounted) return;
-    final size = MediaQuery.of(context).size;
-    final isLandscape = size.width > size.height;
-
-    final videoAsset = isLandscape
-        ? AssetPaths.loadingHorizontal
-        : AssetPaths.loadingVertical;
-
-    _videoController = VideoPlayerController.asset(videoAsset);
-    try {
-      await _videoController!.initialize();
-      _videoController!.setLooping(true);
-      _videoController!.play();
-      if (mounted) setState(() => _videoReady = true);
-    } catch (_) {}
   }
 
   Future<void> _runLoadingSequence() async {
@@ -80,13 +56,11 @@ class _LoadingScreenState extends State<LoadingScreen> {
       loaded++;
 
       final progress = loaded / total;
-      final newState = progress < 0.25
+      final newState = progress < 0.35
           ? 0
-          : progress < 0.55
+          : progress < 0.80
               ? 1
-              : progress < 0.80
-                  ? 2
-                  : 3;
+              : 2;
 
       if (newState != _barState && mounted) {
         setState(() => _barState = newState);
@@ -94,17 +68,14 @@ class _LoadingScreenState extends State<LoadingScreen> {
     }
 
     if (mounted) {
-      setState(() => _barState = 3);
+      setState(() => _barState = 2);
       await Future.delayed(const Duration(milliseconds: 600));
       if (mounted) widget.onLoadingComplete();
     }
   }
 
   @override
-  void dispose() {
-    _videoController?.dispose();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   @override
   Widget build(BuildContext context) {
@@ -113,15 +84,58 @@ class _LoadingScreenState extends State<LoadingScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (_videoReady && _videoController != null)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _videoController!.value.size.width,
-                height: _videoController!.value.size.height,
-                child: VideoPlayer(_videoController!),
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 1.1,
+                colors: [
+                  Color(0xFF17134A),
+                  Color(0xFF070714),
+                  Colors.black,
+                ],
               ),
             ),
+          ),
+          Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset(
+                  AssetPaths.logo,
+                  width: 150,
+                  height: 150,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const SizedBox(height: 150),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'GRAVITY RUSH',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 5,
+                    shadows: [
+                      Shadow(color: Colors.cyanAccent, blurRadius: 20),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'LOADING',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.86),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 4,
+                  ),
+                ),
+              ],
+            ),
+          ),
           if (_showBar)
             Positioned(
               bottom: 60,
