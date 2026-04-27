@@ -280,12 +280,9 @@ class _BootScreenState extends State<BootScreen> {
 
   Widget _buildBrandedSplash(bool landscape, MediaQueryData media) {
     final shortest = media.size.shortestSide;
-    final logoSize = landscape ? shortest * 0.32 : shortest * 0.42;
-    final titleSize = landscape ? 22.0 : 30.0;
-    final loadingSize = landscape ? 13.0 : 17.0;
-    final verticalOffset = landscape
-        ? -media.size.height * 0.05
-        : -media.size.height * 0.07;
+    final logoSize = landscape ? shortest * 0.22 : shortest * 0.42;
+    final titleSize = landscape ? 18.0 : 30.0;
+    final loadingSize = landscape ? 12.0 : 17.0;
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -299,48 +296,52 @@ class _BootScreenState extends State<BootScreen> {
           ],
         ),
       ),
-      child: Center(
-        child: Transform.translate(
-          offset: Offset(0, verticalOffset),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset(
-                AssetPaths.logo,
+      child: Align(
+        // In landscape lift the brand block well above the progress
+        // bar so the LOADING caption never collides with it on short
+        // screens (iPhone SE/mini measure only ~320 px tall in
+        // landscape). Portrait keeps a softer offset.
+        alignment: landscape
+            ? const Alignment(0, -0.55)
+            : const Alignment(0, -0.2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              AssetPaths.logo,
+              width: logoSize,
+              height: logoSize,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) => SizedBox(
                 width: logoSize,
                 height: logoSize,
-                fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => SizedBox(
-                  width: logoSize,
-                  height: logoSize,
-                ),
               ),
-              SizedBox(height: landscape ? 6 : 18),
-              Text(
-                'GRAVITY RUSH',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.cyanAccent,
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
-                  shadows: const [
-                    Shadow(color: Colors.cyanAccent, blurRadius: 18),
-                  ],
-                ),
+            ),
+            SizedBox(height: landscape ? 4 : 18),
+            Text(
+              'GRAVITY RUSH',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.cyanAccent,
+                fontSize: titleSize,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 4,
+                shadows: const [
+                  Shadow(color: Colors.cyanAccent, blurRadius: 18),
+                ],
               ),
-              SizedBox(height: landscape ? 6 : 12),
-              Text(
-                'LOADING',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.86),
-                  fontSize: loadingSize,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 4,
-                ),
+            ),
+            SizedBox(height: landscape ? 4 : 12),
+            Text(
+              'LOADING',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.86),
+                fontSize: loadingSize,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 4,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -351,11 +352,10 @@ class _BootScreenState extends State<BootScreen> {
     required bool landscape,
     required MediaQueryData media,
   }) {
-    final bottom = media.padding.bottom +
-        (landscape ? media.size.height * 0.04 : media.size.height * 0.06);
+    final bottom = media.padding.bottom + (landscape ? 14.0 : 32.0);
     final width = landscape
-        ? media.size.width * 0.25
-        : media.size.width * 0.6;
+        ? (media.size.width * 0.22).clamp(140.0, 220.0)
+        : (media.size.width * 0.6).clamp(180.0, 280.0);
 
     return Positioned(
       left: 0,
@@ -367,7 +367,7 @@ class _BootScreenState extends State<BootScreen> {
           child: Image.asset(
             barAsset,
             key: ValueKey(barAsset),
-            width: width.clamp(160.0, 280.0),
+            width: width,
             fit: BoxFit.contain,
             filterQuality: FilterQuality.high,
             errorBuilder: (context, error, stackTrace) =>
