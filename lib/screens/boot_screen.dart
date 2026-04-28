@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/runtime_mode.dart';
+import '../services/app_bootstrap.dart';
 import '../services/attribution_gateway.dart';
 import '../services/cloud_push_client.dart';
 import '../services/config_api.dart';
@@ -55,6 +56,12 @@ class _BootScreenState extends State<BootScreen> {
   }
 
   Future<void> _kickoff() async {
+    // Heavy first-launch bootstrap (Firebase, App Check, UA probe,
+    // SharedPreferences) used to live in main(). Running it here lets
+    // the branded splash render first so iOS reviewers never see a
+    // long blank screen between LaunchScreen and the first frame.
+    await appBootstrap(widget.store);
+
     widget.push.onTokenRotate = _onTokenRotate;
     await widget.push.bootstrap().catchError((_) {});
     _setStage(_ProgressStage.start);
