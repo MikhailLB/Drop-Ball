@@ -39,10 +39,19 @@ class CloudPushClient {
       FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
       await _configureLocalTray();
 
-      _token = await _msg!.getToken();
+      await _msg!.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      _token = await _readTokenWithApnsReady(reason: 'bootstrap');
 
       _msg!.onTokenRefresh.listen((fresh) {
         _token = fresh;
+        if (kDebugMode) {
+          _debugToken('onTokenRefresh', fresh);
+        }
         onTokenRotate?.call(fresh);
       });
 
@@ -54,7 +63,7 @@ class CloudPushClient {
 
       _ready = true;
       if (kDebugMode) {
-        debugPrint('[PUSH] bootstrap OK, token=${_token?.substring(0, 12)}...');
+        debugPrint('[PUSH] bootstrap OK');
       }
     } catch (err, st) {
       if (kDebugMode) {
@@ -62,6 +71,73 @@ class CloudPushClient {
         debugPrint('$st');
       }
     }
+  }
+
+  Future<String?> refreshToken({bool notify = true}) async {
+    if (_msg == null) {
+      if (kDebugMode) {
+        debugPrint('[PUSH] refreshToken skipped: Firebase not initialized');
+      }
+      return null;
+    }
+    try {
+      _token = await _readTokenWithApnsReady(reason: 'manual_refresh');
+      final fresh = _token;
+      if (notify && fresh != null && fresh.isNotEmpty) {
+        onTokenRotate?.call(fresh);
+      }
+      return fresh;
+    } catch (err, st) {
+      if (kDebugMode) {
+        debugPrint('[PUSH] refreshToken FAILED: $err');
+        debugPrint('$st');
+      }
+      return null;
+    }
+  }
+
+  Future<String?> _readTokenWithApnsReady({required String reason}) async {
+    if (_msg == null) return null;
+
+    if (Platform.isIOS) {
+      String? apnsToken;
+      for (var attempt = 1; attempt <= 6; attempt++) {
+        apnsToken = await _msg!.getAPNSToken();
+        if (kDebugMode) {
+          debugPrint(
+            '[PUSH] $reason APNs token attempt $attempt: '
+            '${apnsToken == null || apnsToken.isEmpty ? 'null' : apnsToken}',
+          );
+        }
+        if (apnsToken != null && apnsToken.isNotEmpty) break;
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+      }
+    }
+
+    final settings = await _msg!.getNotificationSettings();
+    if (kDebugMode) {
+      debugPrint(
+        '[PUSH] $reason notification status='
+        '${settings.authorizationStatus}',
+      );
+    }
+
+    final token = await _msg!.getToken();
+    if (kDebugMode) {
+      _debugToken('$reason FCM token', token);
+    }
+    return token;
+  }
+
+  void _debugToken(String label, String? token) {
+    if (!kDebugMode) return;
+    if (token == null || token.isEmpty) {
+      debugPrint('[PUSH] $label=null');
+      return;
+    }
+    // Full token is intentionally printed in debug builds so it can be pasted
+    // into Firebase Console -> Cloud Messaging -> Send test message.
+    debugPrint('[PUSH] $label=$token');
   }
 
   Future<void> _configureLocalTray() async {
@@ -88,8 +164,10 @@ class CloudPushClient {
     );
 
     if (Platform.isAndroid) {
-      final impl = _tray.resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>();
+      final impl = _tray
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       await impl?.createNotificationChannel(
         const AndroidNotificationChannel(
           pushChannelId,
@@ -136,8 +214,10 @@ class CloudPushClient {
   }
 
   Future<bool> _askConsentAndroid() async {
-    final androidImpl = _tray.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final androidImpl = _tray
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     if (androidImpl == null) {
       if (kDebugMode) {
         debugPrint('[PUSH] android plugin impl missing — fallback to firebase');
@@ -171,7 +251,7 @@ class CloudPushClient {
     if (current.authorizationStatus != AuthorizationStatus.notDetermined) {
       final ok =
           current.authorizationStatus == AuthorizationStatus.authorized ||
-              current.authorizationStatus == AuthorizationStatus.provisional;
+          current.authorizationStatus == AuthorizationStatus.provisional;
       await _store.writePushConsent(ok);
       return ok;
     }
@@ -185,7 +265,8 @@ class CloudPushClient {
     if (kDebugMode) {
       debugPrint('[PUSH] ios requestPermission=${result.authorizationStatus}');
     }
-    final ok = result.authorizationStatus == AuthorizationStatus.authorized ||
+    final ok =
+        result.authorizationStatus == AuthorizationStatus.authorized ||
         result.authorizationStatus == AuthorizationStatus.provisional;
     await _store.writePushConsent(ok);
     return ok;
@@ -214,8 +295,9 @@ class CloudPushClient {
           icon: pushIconRes,
           styleInformation: BigPictureStyleInformation(
             ByteArrayAndroidBitmap(bytes),
-            largeIcon:
-                const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+            largeIcon: const DrawableResourceAndroidBitmap(
+              '@mipmap/ic_launcher',
+            ),
           ),
         );
       }
@@ -229,8 +311,7 @@ class CloudPushClient {
       icon: pushIconRes,
     );
 
-    final payload =
-        message.data.isNotEmpty ? jsonEncode(message.data) : null;
+    final payload = message.data.isNotEmpty ? jsonEncode(message.data) : null;
 
     await _tray.show(
       notif.hashCode,

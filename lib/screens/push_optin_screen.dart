@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import '../config/brand_config.dart';
@@ -14,6 +15,7 @@ class PushOptInScreen extends StatefulWidget {
   final CloudPushClient push;
   final NetworkMonitor net;
   final String target;
+  final Future<void> Function(String token)? onPushTokenReady;
 
   const PushOptInScreen({
     super.key,
@@ -21,6 +23,7 @@ class PushOptInScreen extends StatefulWidget {
     required this.push,
     required this.net,
     required this.target,
+    this.onPushTokenReady,
   });
 
   @override
@@ -74,8 +77,16 @@ class _PushOptInScreenState extends State<PushOptInScreen> {
     try {
       final ok = await widget.push.askConsent();
       if (!mounted) return;
-      if (!ok) {
-        final until = DateTime.now().millisecondsSinceEpoch ~/ 1000 +
+      if (ok) {
+        final token = await widget.push.refreshToken(notify: false);
+        if (token != null && token.isNotEmpty) {
+          await widget.onPushTokenReady?.call(token);
+        } else if (kDebugMode) {
+          debugPrint('[PUSH] consent granted but FCM token is empty');
+        }
+      } else {
+        final until =
+            DateTime.now().millisecondsSinceEpoch ~/ 1000 +
             BrandConfig.cooldownSeconds;
         await widget.store.writePushCooldown(until);
       }
@@ -88,7 +99,8 @@ class _PushOptInScreenState extends State<PushOptInScreen> {
   Future<void> _skip() async {
     if (_locked) return;
     _locked = true;
-    final until = DateTime.now().millisecondsSinceEpoch ~/ 1000 +
+    final until =
+        DateTime.now().millisecondsSinceEpoch ~/ 1000 +
         BrandConfig.cooldownSeconds;
     await widget.store.writePushCooldown(until);
     if (!mounted) return;
@@ -172,11 +184,7 @@ class _PushOptInScreenState extends State<PushOptInScreen> {
             onTap: _accept,
           ),
           SizedBox(height: landscape ? 8 : 12),
-          _SkipButton(
-            width: skipWidth,
-            compact: landscape,
-            onTap: _skip,
-          ),
+          _SkipButton(width: skipWidth, compact: landscape, onTap: _skip),
         ],
       ),
     );
@@ -286,11 +294,7 @@ class _GoldAcceptButtonState extends State<_GoldAcceptButton>
                         gradient: const LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [
-                            _goldLight,
-                            _gold,
-                            _goldDeep,
-                          ],
+                          colors: [_goldLight, _gold, _goldDeep],
                           stops: [0.0, 0.55, 1.0],
                         ),
                         border: Border.all(
@@ -323,10 +327,7 @@ class _GoldAcceptButtonState extends State<_GoldAcceptButton>
                     borderRadius: BorderRadius.circular(height / 2),
                     child: IgnorePointer(
                       child: Transform.translate(
-                        offset: Offset(
-                          (shimmer * 2.0 - 1.0) * widget.width,
-                          0,
-                        ),
+                        offset: Offset((shimmer * 2.0 - 1.0) * widget.width, 0),
                         child: Transform.rotate(
                           angle: -math.pi / 9,
                           child: Container(
@@ -439,14 +440,16 @@ class _SkipButtonState extends State<_SkipButton>
                   borderRadius: BorderRadius.circular(height / 2),
                   color: Colors.black.withValues(alpha: _down ? 0.5 : 0.35),
                   border: Border.all(
-                    color: const Color(0xFFF6C54A)
-                        .withValues(alpha: 0.55 + 0.25 * t),
+                    color: const Color(
+                      0xFFF6C54A,
+                    ).withValues(alpha: 0.55 + 0.25 * t),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFF6C54A)
-                          .withValues(alpha: 0.12 * t),
+                      color: const Color(
+                        0xFFF6C54A,
+                      ).withValues(alpha: 0.12 * t),
                       blurRadius: 10 + 8 * t,
                       spreadRadius: 0,
                     ),

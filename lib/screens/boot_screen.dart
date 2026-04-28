@@ -147,9 +147,7 @@ class _BootScreenState extends State<BootScreen> {
 
     await widget.attribution.warmup();
     await Future.wait([
-      widget.attribution.awaitConversion(
-        timeout: const Duration(seconds: 10),
-      ),
+      widget.attribution.awaitConversion(timeout: const Duration(seconds: 10)),
       widget.attribution.awaitDeepLink(),
     ]);
 
@@ -174,13 +172,17 @@ class _BootScreenState extends State<BootScreen> {
     }
   }
 
-  void _onTokenRotate(String newToken) async {
+  void _onTokenRotate(String newToken) {
+    _sendPushTokenUpdate(newToken);
+  }
+
+  Future<void> _sendPushTokenUpdate(String newToken) async {
     final locale = Platform.localeName.replaceAll('-', '_');
     final body = await widget.attribution.assembleRequest(
       locale: locale,
       pushToken: newToken,
     );
-    widget.config.dispatch(body);
+    await widget.config.dispatch(body);
   }
 
   void _setStage(_ProgressStage s) {
@@ -203,6 +205,7 @@ class _BootScreenState extends State<BootScreen> {
             push: widget.push,
             net: widget.net,
             target: url,
+            onPushTokenReady: _sendPushTokenUpdate,
           ),
         ),
       );
@@ -296,11 +299,7 @@ class _BootScreenState extends State<BootScreen> {
         gradient: RadialGradient(
           center: Alignment.center,
           radius: 1.1,
-          colors: [
-            Color(0xFF17134A),
-            Color(0xFF070714),
-            Colors.black,
-          ],
+          colors: [Color(0xFF17134A), Color(0xFF070714), Colors.black],
         ),
       ),
       child: Align(
@@ -319,10 +318,8 @@ class _BootScreenState extends State<BootScreen> {
               width: logoSize,
               height: logoSize,
               fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) => SizedBox(
-                width: logoSize,
-                height: logoSize,
-              ),
+              errorBuilder: (context, error, stackTrace) =>
+                  SizedBox(width: logoSize, height: logoSize),
             ),
             SizedBox(height: landscape ? 4 : 18),
             Text(
