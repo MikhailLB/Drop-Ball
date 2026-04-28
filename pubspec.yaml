@@ -37,6 +37,7 @@ dependencies:
   flutter_secure_storage: 9.2.4
   webview_flutter: 4.10.0
   webview_flutter_android: 4.3.2
+  webview_flutter_wkwebview: 3.24.5
   file_picker: 10.3.3
   app_tracking_transparency: ^2.0.6+1
 

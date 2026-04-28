@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 import '../services/browser_http.dart';
 import '../services/cloud_push_client.dart';
 import '../services/local_store.dart';
@@ -53,7 +54,25 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
     _lockOrientations();
     _applyFullscreen();
 
-    _wv = WebViewController()
+    // Platform-specific creation params. iOS WKWebView REQUIRES these to
+    // be set at construction time — calling setters later has no effect:
+    //   * allowsInlineMediaPlayback: true  -> <video> doesn't force
+    //     fullscreen QuickTime overlay on tap.
+    //   * mediaTypesRequiringUserAction: {} -> autoplay (with muted)
+    //     works without an initial tap, matching Android behaviour.
+    late final PlatformWebViewControllerCreationParams params;
+    if (Platform.isIOS) {
+      params = WebKitWebViewControllerCreationParams(
+        allowsInlineMediaPlayback: true,
+        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+      );
+    } else if (Platform.isAndroid) {
+      params = AndroidWebViewControllerCreationParams();
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
+
+    _wv = WebViewController.fromPlatformCreationParams(params)
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setUserAgent(browserHttp.userAgent)
       ..setBackgroundColor(Colors.black)
@@ -139,6 +158,11 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
   }
 
   void _setupPlatform() {
+    if (Platform.isIOS && _wv.platform is WebKitWebViewController) {
+      final ios = _wv.platform as WebKitWebViewController;
+      // Native edge-swipe back/forward like Mobile Safari.
+      ios.setAllowsBackForwardNavigationGestures(true);
+    }
     if (Platform.isAndroid && _wv.platform is AndroidWebViewController) {
       final android = _wv.platform as AndroidWebViewController;
       android.setMediaPlaybackRequiresUserGesture(false);
@@ -378,7 +402,44 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
               ),
             if (_fullscreenWidget != null)
               Positioned.fill(child: _fullscreenWidget!),
+            // Floating back button. iOS doesn't have a system back gesture
+            // outside the screen edge, and on SPAs the edge gesture often
+            // does nothing. Always-visible button keeps the UX predictable.
+            Positioned(
+              left: 8,
+              top: MediaQuery.of(context).viewPadding.top + 4,
+              child: SafeArea(
+                top: false,
+                bottom: false,
+                child: _BackChip(onTap: _handleBack),
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BackChip extends StatelessWidget {
+  final Future<bool> Function() onTap;
+  const _BackChip({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.45),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: () => onTap(),
+        child: const Padding(
+          padding: EdgeInsets.all(8),
+          child: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Colors.white,
+            size: 22,
+          ),
         ),
       ),
     );
