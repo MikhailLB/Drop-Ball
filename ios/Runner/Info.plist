@@ -92,10 +92,6 @@
 	<string>Your data will be used to measure advertising effectiveness and to deliver personalized content within this app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Photo library access is used to attach images when uploading files inside the app.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Camera access is used to capture photos when you upload an image inside the app.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Microphone access is used when you record audio attached to a video upload inside the app.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
