@@ -126,7 +126,8 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       onWebResourceError: (err) {
         if (err.isForMainFrame != true) return;
         final desc = err.description.toLowerCase();
-        final loop = desc.contains('too_many_redirects') ||
+        final loop =
+            desc.contains('too_many_redirects') ||
             desc.contains('too many redirects') ||
             err.errorCode == -1007 ||
             err.errorCode == -9;
@@ -142,7 +143,8 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
         final uri = Uri.tryParse(req.url);
         if (uri == null) return NavigationDecision.prevent;
         final scheme = uri.scheme;
-        final browserScheme = scheme == 'http' ||
+        final browserScheme =
+            scheme == 'http' ||
             scheme == 'https' ||
             scheme == 'about' ||
             scheme == 'data' ||
@@ -169,20 +171,20 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       android.setOnShowFileSelector(_pickFiles);
 
       // Grant only DRM-related permissions; deny camera/mic
-      android.setOnPlatformPermissionRequest(
-        (PlatformWebViewPermissionRequest request) {
-          final drmOnly = request.types.every(
-            (t) =>
-                t == AndroidWebViewPermissionResourceType.protectedMediaId ||
-                t == AndroidWebViewPermissionResourceType.midiSysex,
-          );
-          if (drmOnly) {
-            request.grant();
-          } else {
-            request.deny();
-          }
-        },
-      );
+      android.setOnPlatformPermissionRequest((
+        PlatformWebViewPermissionRequest request,
+      ) {
+        final drmOnly = request.types.every(
+          (t) =>
+              t == AndroidWebViewPermissionResourceType.protectedMediaId ||
+              t == AndroidWebViewPermissionResourceType.midiSysex,
+        );
+        if (drmOnly) {
+          request.grant();
+        } else {
+          request.deny();
+        }
+      });
 
       // Fullscreen video overlay (casino video player fullscreen button)
       android.setCustomWidgetCallbacks(
@@ -197,8 +199,7 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       );
 
       final cookies = AndroidWebViewCookieManager(
-        AndroidWebViewCookieManagerCreationParams
-            .fromPlatformWebViewCookieManagerCreationParams(
+        AndroidWebViewCookieManagerCreationParams.fromPlatformWebViewCookieManagerCreationParams(
           const PlatformWebViewCookieManagerCreationParams(),
         ),
       );
@@ -370,6 +371,13 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    // viewPadding (not padding) keeps safe-area insets stable even when the
+    // soft keyboard is visible. We pad the WebView on every side so the
+    // notch, status bar, home indicator and landscape sensor housing never
+    // overlap the page content.
+    final safe = media.viewPadding;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -383,10 +391,10 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
           children: [
             Padding(
               padding: EdgeInsets.only(
-                top: MediaQuery.of(context).orientation ==
-                        Orientation.landscape
-                    ? 0
-                    : MediaQuery.of(context).viewPadding.top,
+                top: safe.top,
+                bottom: safe.bottom,
+                left: safe.left,
+                right: safe.right,
               ),
               child: WebViewWidget(controller: _wv),
             ),
@@ -395,8 +403,9 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
                 color: Colors.black.withValues(alpha: 0.5),
                 child: const Center(
                   child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Colors.cyanAccent,
+                    ),
                   ),
                 ),
               ),
@@ -406,13 +415,9 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
             // outside the screen edge, and on SPAs the edge gesture often
             // does nothing. Always-visible button keeps the UX predictable.
             Positioned(
-              left: 8,
-              top: MediaQuery.of(context).viewPadding.top + 4,
-              child: SafeArea(
-                top: false,
-                bottom: false,
-                child: _BackChip(onTap: _handleBack),
-              ),
+              left: safe.left + 8,
+              top: safe.top + 4,
+              child: _BackChip(onTap: _handleBack),
             ),
           ],
         ),
