@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/skin_data.dart';
 import '../utils/asset_paths.dart';
 import 'in_app_web_page.dart';
+import 'profile_screen.dart';
 
 class MainMenuScreen extends StatefulWidget {
   final void Function(SkinData skin) onPlay;
@@ -18,6 +20,8 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   int _selectedSkinIndex = 0;
   int _balance = 0;
   Set<String> _unlockedSkins = {'blue'};
+  String? _avatarPath;
+  String _displayName = 'Player';
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -36,6 +40,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    final avatar = prefs.getString('gr.avatar_path');
     setState(() {
       _balance = prefs.getInt('balance') ?? 0;
       final raw = prefs.getString('unlocked_skins') ?? 'blue';
@@ -47,7 +52,17 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       if (!_unlockedSkins.contains(SkinData.allSkins[_selectedSkinIndex].id)) {
         _selectedSkinIndex = 0;
       }
+      _avatarPath =
+          (avatar != null && File(avatar).existsSync()) ? avatar : null;
+      _displayName = prefs.getString('gr.display_name') ?? 'Player';
     });
+  }
+
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
+    await _loadPreferences();
   }
 
   Future<void> _saveSkinSelection(String skinId) async {
@@ -142,14 +157,22 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 30),
-            Image.asset(AssetPaths.logo, width: 140, height: 140),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: _buildProfileChip(),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Image.asset(AssetPaths.logo, width: 120, height: 120),
+            const SizedBox(height: 8),
             const Text(
               'GRAVITY RUSH',
               style: TextStyle(
                 color: Colors.cyanAccent,
-                fontSize: 32,
+                fontSize: 30,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 6,
                 shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)],
@@ -217,6 +240,60 @@ class _MainMenuScreenState extends State<MainMenuScreen>
           fontSize: 12,
           decoration: TextDecoration.underline,
           decorationColor: Colors.white.withValues(alpha: 0.25),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileChip() {
+    final hasAvatar =
+        _avatarPath != null && File(_avatarPath!).existsSync();
+    return GestureDetector(
+      onTap: _openProfile,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(6, 6, 14, 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.cyanAccent.withValues(alpha: 0.15),
+                image: hasAvatar
+                    ? DecorationImage(
+                        image: FileImage(File(_avatarPath!)),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: hasAvatar
+                  ? null
+                  : const Icon(Icons.person,
+                      size: 22, color: Colors.cyanAccent),
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 140),
+              child: Text(
+                _displayName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

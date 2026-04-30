@@ -1,7 +1,7 @@
 name: gravity_rush
 description: "Gravity Rush — neon plinko ball game with risk and reward."
 publish_to: 'none'
-version: 1.0.1+9
+version: 1.0.1+10
 
 environment:
   sdk: ^3.11.4
@@ -40,6 +40,8 @@ dependencies:
   webview_flutter_wkwebview: 3.24.5
   file_picker: 10.3.3
   app_tracking_transparency: ^2.0.6+1
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:

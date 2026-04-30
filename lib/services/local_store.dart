@@ -9,6 +9,8 @@ class LocalStore {
   static const _pushCooldownKey = 'gr.push_cooldown_until';
   static const _pushConsentKey = 'gr.push_consent';
   static const _pushTargetKey = 'gr.push_target';
+  static const _avatarPathKey = 'gr.avatar_path';
+  static const _displayNameKey = 'gr.display_name';
 
   late SharedPreferences _plain;
   final FlutterSecureStorage _vault = const FlutterSecureStorage();
@@ -70,6 +72,22 @@ class LocalStore {
     } else {
       await _vault.write(key: _pushTargetKey, value: url);
     }
+  }
+
+  String? readAvatarPath() => _plain.getString(_avatarPathKey);
+
+  Future<void> writeAvatarPath(String? path) async {
+    if (path == null) {
+      await _plain.remove(_avatarPathKey);
+    } else {
+      await _plain.setString(_avatarPathKey, path);
+    }
+  }
+
+  String readDisplayName() => _plain.getString(_displayNameKey) ?? 'Player';
+
+  Future<void> writeDisplayName(String name) async {
+    await _plain.setString(_displayNameKey, name);
   }
 
   Future<String?> takePushTarget() async {
