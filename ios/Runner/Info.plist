@@ -90,6 +90,8 @@
 	</dict>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>Your data will be used to measure advertising effectiveness and to deliver personalized content within this app.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access is used to attach images when uploading files inside the app.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
