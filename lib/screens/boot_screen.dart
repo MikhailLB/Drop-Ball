@@ -86,14 +86,69 @@ class _BootScreenState extends State<BootScreen> {
         await _runBrowserMode();
         break;
       case RuntimeMode.arcade:
-        _setStage(_ProgressStage.midway);
-        _setStage(_ProgressStage.filled);
-        await Future.delayed(const Duration(milliseconds: 600));
-        _goArcade();
+        await _runArcadeMode();
         break;
       case RuntimeMode.undetermined:
         await _runFirstLaunch();
         break;
+    }
+  }
+
+  /// Even when the previous launch decided the app should run in arcade
+  /// mode, we still want to give attribution one more chance. Reasons:
+  ///   * the user might have installed organically and clicked a OneLink
+  ///     only later — AppsFlyer fires a re-engagement event we should
+  ///     react to.
+  ///   * the very first dispatch can race against AppsFlyer's conversion
+  ///     callback, returning accepted=false before the SDK even reported
+  ///     attribution. Without this re-check the user is locked to arcade
+  ///     forever.
+  /// We only re-dispatch when there is online connectivity AND attribution
+  /// data actually carries a non-organic / deep-link signal — otherwise
+  /// arcade stays as configured.
+  Future<void> _runArcadeMode() async {
+    _setStage(_ProgressStage.midway);
+
+    final online = await widget.net.isOnline();
+    if (!online) {
+      _setStage(_ProgressStage.filled);
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _goArcade();
+      return;
+    }
+
+    await widget.attribution.warmup();
+    await Future.wait([
+      widget.attribution.awaitConversion(timeout: const Duration(seconds: 6)),
+      widget.attribution.awaitDeepLink(timeout: const Duration(seconds: 4)),
+    ]);
+
+    final hasFreshAttribution = widget.attribution.hasNonOrganicSignal;
+    if (!hasFreshAttribution) {
+      _setStage(_ProgressStage.filled);
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _goArcade();
+      return;
+    }
+
+    final locale = Platform.localeName.replaceAll('-', '_');
+    final body = await widget.attribution.assembleRequest(
+      locale: locale,
+      pushToken: widget.push.token,
+    );
+    final reply = await widget.config.dispatch(body);
+    _setStage(_ProgressStage.filled);
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+
+    if (reply.accepted && reply.target != null) {
+      // OneLink arrived after install — promote the user to browser mode.
+      await widget.store.writeRuntimeMode(RuntimeMode.browser);
+      _goWebContent(reply.target!);
+    } else {
+      _goArcade();
     }
   }
 
@@ -121,19 +176,25 @@ class _BootScreenState extends State<BootScreen> {
     );
     final reply = await widget.config.dispatch(body);
 
+    _setStage(_ProgressStage.filled);
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
+
     if (reply.accepted && reply.target != null) {
       await widget.store.writeRuntimeMode(RuntimeMode.browser);
-      _setStage(_ProgressStage.filled);
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
       _goWebContent(reply.target!);
-    } else {
-      await widget.store.writeRuntimeMode(RuntimeMode.arcade);
-      _setStage(_ProgressStage.filled);
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (!mounted) return;
-      _goArcade();
+      return;
     }
+
+    // Only persist arcade if AppsFlyer definitively reported the install
+    // as Organic. If conversion data never arrived (timeout, ATT denied,
+    // SDK error) we leave runtime_mode = undetermined so the next launch
+    // gets another chance — otherwise a OneLink that arrives after the
+    // first cold start would be ignored forever.
+    if (widget.attribution.hasOrganicSignal) {
+      await widget.store.writeRuntimeMode(RuntimeMode.arcade);
+    }
+    _goArcade();
   }
 
   Future<void> _runBrowserMode() async {

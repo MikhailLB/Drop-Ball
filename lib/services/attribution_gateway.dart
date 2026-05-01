@@ -188,6 +188,30 @@ class AttributionGateway {
         .timeout(timeout, onTimeout: () {});
   }
 
+  /// True when AppsFlyer has positively reported the install as
+  /// Non-organic OR a deep-link / re-engagement event has been received.
+  /// Used by BootScreen to decide whether to re-attempt backend dispatch
+  /// even when the runtime mode is locked to arcade.
+  bool get hasNonOrganicSignal {
+    final status = (_conversion?['af_status'] as String?)?.toLowerCase();
+    if (status == 'non-organic') return true;
+    if (_deepLink != null && _deepLink!.isNotEmpty) return true;
+    if (_reopen != null && _reopen!.isNotEmpty) {
+      final reStatus = (_reopen!['af_status'] as String?)?.toLowerCase();
+      if (reStatus == 'non-organic') return true;
+    }
+    return false;
+  }
+
+  /// True only when conversion data has arrived AND it explicitly says
+  /// the install is Organic. We use this to avoid locking the user to
+  /// arcade mode just because conversion timed out — only an explicit
+  /// Organic verdict is allowed to do that.
+  bool get hasOrganicSignal {
+    final status = (_conversion?['af_status'] as String?)?.toLowerCase();
+    return status == 'organic';
+  }
+
   Future<String?> identifier() async {
     if (_provider == null) return null;
     try {
