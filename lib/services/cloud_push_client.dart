@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:path_provider/path_provider.dart';
 import 'browser_http.dart';
 import 'local_store.dart';
 
@@ -59,7 +60,7 @@ class CloudPushClient {
       FirebaseMessaging.onMessageOpenedApp.listen(_onBackgroundTap);
 
       final cold = await _msg!.getInitialMessage();
-      if (cold != null) _onColdStart(cold);
+      if (cold != null) await _onColdStart(cold);
 
       _ready = true;
       if (kDebugMode) {
@@ -179,6 +180,21 @@ class CloudPushClient {
     }
   }
 
+  /// True only if the OS will actually surface a permission prompt when
+  /// `askConsent()` is called. Once the user denies notifications at the
+  /// system level, iOS / Android won't show the prompt again, so our
+  /// custom opt-in screen becomes a dead end (ALLOW just closes it).
+  /// We use this to skip the opt-in entirely in that situation.
+  Future<bool> canShowSystemPrompt() async {
+    if (_msg == null) return false;
+    try {
+      final settings = await _msg!.getNotificationSettings();
+      return settings.authorizationStatus == AuthorizationStatus.notDetermined;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<bool> askConsent() async {
     if (_msg == null) {
       if (kDebugMode) {
@@ -284,22 +300,33 @@ class CloudPushClient {
     }
 
     AndroidNotificationDetails? androidDetails;
+    DarwinNotificationDetails iosDetails = const DarwinNotificationDetails();
+
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      final bytes = await _downloadPicture(imageUrl);
-      if (bytes != null) {
-        androidDetails = AndroidNotificationDetails(
-          pushChannelId,
-          pushChannelLabel,
-          importance: Importance.high,
-          priority: Priority.high,
-          icon: pushIconRes,
-          styleInformation: BigPictureStyleInformation(
-            ByteArrayAndroidBitmap(bytes),
-            largeIcon: const DrawableResourceAndroidBitmap(
-              '@mipmap/ic_launcher',
+      if (Platform.isAndroid) {
+        final bytes = await _downloadPicture(imageUrl);
+        if (bytes != null) {
+          androidDetails = AndroidNotificationDetails(
+            pushChannelId,
+            pushChannelLabel,
+            importance: Importance.high,
+            priority: Priority.high,
+            icon: pushIconRes,
+            styleInformation: BigPictureStyleInformation(
+              ByteArrayAndroidBitmap(bytes),
+              largeIcon: const DrawableResourceAndroidBitmap(
+                '@mipmap/ic_launcher',
+              ),
             ),
-          ),
-        );
+          );
+        }
+      } else if (Platform.isIOS) {
+        final filePath = await _downloadToTempFile(imageUrl);
+        if (filePath != null) {
+          iosDetails = DarwinNotificationDetails(
+            attachments: [DarwinNotificationAttachment(filePath)],
+          );
+        }
       }
     }
 
@@ -317,23 +344,38 @@ class CloudPushClient {
       notif.hashCode,
       notif.title,
       notif.body,
-      NotificationDetails(
-        android: androidDetails,
-        iOS: const DarwinNotificationDetails(),
-      ),
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload,
     );
   }
 
-  void _onColdStart(RemoteMessage message) {
-    final url = message.data['url'] as String?;
+  Future<void> _onColdStart(RemoteMessage message) async {
+    final url = _extractUrl(message);
     if (url != null && url.isNotEmpty) {
-      _store.writePushTarget(url);
+      // Persist BEFORE bootstrap returns so BootScreen's takePushTarget()
+      // sees the target. Without await we used to race the writer against
+      // the reader and silently fall through to the cached config target.
+      await _store.writePushTarget(url);
     }
   }
 
+  String? _extractUrl(RemoteMessage message) {
+    final data = message.data;
+    final candidates = [
+      data['url'],
+      data['link'],
+      data['target'],
+      data['deeplink'],
+      data['deep_link'],
+    ];
+    for (final raw in candidates) {
+      if (raw is String && raw.trim().isNotEmpty) return raw.trim();
+    }
+    return null;
+  }
+
   void _onBackgroundTap(RemoteMessage message) {
-    final url = message.data['url'] as String?;
+    final url = _extractUrl(message);
     if (url != null && url.isNotEmpty) {
       onRemoteTarget?.call(url);
     }
@@ -347,5 +389,25 @@ class CloudPushClient {
       if (response.statusCode == 200) return response.bodyBytes;
     } catch (_) {}
     return null;
+  }
+
+  /// iOS attachments must be a real file on disk (URL is not enough).
+  /// Save the downloaded image into the temp directory and return the
+  /// absolute path so DarwinNotificationAttachment can render it.
+  Future<String?> _downloadToTempFile(String url) async {
+    try {
+      final bytes = await _downloadPicture(url);
+      if (bytes == null) return null;
+      final dir = await getTemporaryDirectory();
+      var ext = Uri.parse(url).path.split('.').last.toLowerCase();
+      if (ext.length > 4 || ext.isEmpty) ext = 'jpg';
+      final file = File(
+        '${dir.path}/push_${DateTime.now().millisecondsSinceEpoch}.$ext',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      return file.path;
+    } catch (_) {
+      return null;
+    }
   }
 }

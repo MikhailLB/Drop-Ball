@@ -17,6 +17,42 @@ matches the Apple Developer Team ID you own.
 
 ---
 
+## Optional: Rich push images on iOS (Notification Service Extension)
+
+iOS does NOT show `apple.imageUrl` / `fcm_options.image` automatically when
+the app is backgrounded. A Notification Service Extension target is needed
+to download the image and attach it before the system renders the alert.
+
+The Swift source and Info.plist for the extension are already committed
+under `ios/NotificationService/`. To wire them into the Xcode project
+(one-time setup), do the following on macOS:
+
+1. Open `ios/Runner.xcworkspace` in Xcode.
+2. **File → New → Target… → Notification Service Extension**.
+   - Product Name: `NotificationService`
+   - Language: Swift
+   - Team: same as Runner
+   - Bundle ID: `com.gsteamgsgames.gravityrush.NotificationService`
+   - Embed In Application: `Runner`
+3. When Xcode asks "Activate scheme", click **Cancel** (we don't need a
+   separate scheme).
+4. In the Project Navigator, **delete** the `NotificationService.swift`
+   and `Info.plist` Xcode just generated (move to trash).
+5. Drag the existing `ios/NotificationService/NotificationService.swift`
+   and `ios/NotificationService/Info.plist` into the **NotificationService**
+   target group, with **Copy items if needed** UNchecked, **Add to target:
+   NotificationService** checked.
+6. Select the **NotificationService** target → **Signing & Capabilities** →
+   set the same Team and check "Automatically manage signing".
+7. Set the deployment target to **iOS 13.0** (matching Runner).
+8. Push the change. Codemagic will pick up the new target on next build.
+
+Backend payload requirements:
+- Firebase Console "Send test message" with Image URL works out of the box
+  (it injects `mutable-content: 1` and `fcm_options.image`).
+- Custom backends must include `mutable-content: 1` in the APNs payload
+  and `fcm_options.image` (or `image`) in the data dictionary.
+
 ## 1. Apple Developer account prerequisites
 
 1. Paid Apple Developer Program membership ($99/year).

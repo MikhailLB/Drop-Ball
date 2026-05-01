@@ -378,14 +378,21 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
     + '}'
     + 'html,body,#__nuxt,#__layout,#app,#root,.gameview-mobile-header{'
     + 'padding-top:0!important;padding-left:0!important;padding-right:0!important;margin-top:0!important;'
-    + '}';
+    + 'touch-action:pan-x pan-y!important;'
+    + '}'
+    + 'html{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;}';
+  var WANT = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=contain';
   function apply(){
     var head = document.head || document.documentElement;
     if (!head) return;
     var vp = document.querySelector('meta[name="viewport"]');
-    if (vp && !/viewport-fit\s*=\s*contain/i.test(vp.getAttribute('content') || '')){
-      var c = (vp.getAttribute('content') || '').replace(/,?\s*viewport-fit\s*=\s*\w+/ig,'').trim();
-      vp.setAttribute('content', c + (c ? ', ' : '') + 'viewport-fit=contain');
+    if (!vp){
+      vp = document.createElement('meta');
+      vp.setAttribute('name', 'viewport');
+      head.appendChild(vp);
+    }
+    if (vp.getAttribute('content') !== WANT){
+      vp.setAttribute('content', WANT);
     }
     var s = document.getElementById(ID);
     if (!s){ s = document.createElement('style'); s.id = ID; head.appendChild(s); }
@@ -393,6 +400,21 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
     if (head.lastElementChild !== s) head.appendChild(s);
   }
   apply();
+  // Kill multi-touch gestures (pinch-zoom) at the event level — works
+  // even on pages that override the viewport meta after we set it.
+  document.addEventListener('gesturestart', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('gesturechange', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('gestureend', function(e){ e.preventDefault(); }, { passive: false });
+  document.addEventListener('touchmove', function(e){
+    if (e.touches && e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+  // Block double-tap zoom (iOS Safari quirk).
+  var lastTap = 0;
+  document.addEventListener('touchend', function(e){
+    var now = Date.now();
+    if (now - lastTap < 350){ e.preventDefault(); }
+    lastTap = now;
+  }, { passive: false });
   ['pushState','replaceState'].forEach(function(name){
     var orig = history[name];
     history[name] = function(){
@@ -482,40 +504,7 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
               ),
             if (_fullscreenWidget != null)
               Positioned.fill(child: _fullscreenWidget!),
-            // Floating back button. iOS doesn't have a system back gesture
-            // outside the screen edge, and on SPAs the edge gesture often
-            // does nothing. Always-visible button keeps the UX predictable.
-            Positioned(
-              left: safe.left + 8,
-              top: safe.top + 4,
-              child: _BackChip(onTap: _handleBack),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BackChip extends StatelessWidget {
-  final Future<bool> Function() onTap;
-  const _BackChip({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.black.withValues(alpha: 0.45),
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: () => onTap(),
-        child: const Padding(
-          padding: EdgeInsets.all(8),
-          child: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Colors.white,
-            size: 22,
-          ),
         ),
       ),
     );

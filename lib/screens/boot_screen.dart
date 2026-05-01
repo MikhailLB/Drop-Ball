@@ -39,6 +39,7 @@ class BootScreen extends StatefulWidget {
 class _BootScreenState extends State<BootScreen> {
   _ProgressStage _stage = _ProgressStage.start;
   bool _leaving = false;
+  bool _assetsPrecached = false;
 
   @override
   void initState() {
@@ -53,6 +54,19 @@ class _BootScreenState extends State<BootScreen> {
       DeviceOrientation.landscapeRight,
     ]);
     _kickoff();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_assetsPrecached) return;
+    _assetsPrecached = true;
+    // Pre-warm progress-bar frames so AnimatedOpacity doesn't flash to a
+    // blank cell on the first stage transition (assets are decoded lazily
+    // otherwise and the user sees a one-frame gap mid-animation).
+    precacheImage(const AssetImage(AssetPaths.loadingBarEmpty), context);
+    precacheImage(const AssetImage(AssetPaths.loadingBarAlmostFull), context);
+    precacheImage(const AssetImage(AssetPaths.loadingBarFull), context);
   }
 
   Future<void> _kickoff() async {
@@ -197,7 +211,15 @@ class _BootScreenState extends State<BootScreen> {
     await primeBrowser();
     if (!mounted) return;
 
-    if (widget.store.needsPushPrompt()) {
+    // Only show the opt-in screen if the OS will actually surface a
+    // system prompt afterwards. If the user has already permanently
+    // denied (or granted) notifications, the opt-in screen is a no-op
+    // for ALLOW, so we skip straight to the WebHost.
+    final canPrompt =
+        widget.store.needsPushPrompt() &&
+        await widget.push.canShowSystemPrompt();
+
+    if (canPrompt) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => PushOptInScreen(
@@ -260,12 +282,6 @@ class _BootScreenState extends State<BootScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final barAsset = switch (_stage) {
-      _ProgressStage.start => AssetPaths.loadingBarEmpty,
-      _ProgressStage.midway => AssetPaths.loadingBarAlmostFull,
-      _ProgressStage.filled => AssetPaths.loadingBarFull,
-    };
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: OrientationBuilder(
@@ -276,11 +292,7 @@ class _BootScreenState extends State<BootScreen> {
             fit: StackFit.expand,
             children: [
               _buildBrandedSplash(landscape, media),
-              _buildProgressBar(
-                barAsset: barAsset,
-                landscape: landscape,
-                media: media,
-              ),
+              _buildProgressBar(landscape: landscape, media: media),
             ],
           );
         },
@@ -352,7 +364,6 @@ class _BootScreenState extends State<BootScreen> {
   }
 
   Widget _buildProgressBar({
-    required String barAsset,
     required bool landscape,
     required MediaQueryData media,
   }) {
@@ -361,23 +372,53 @@ class _BootScreenState extends State<BootScreen> {
         ? (media.size.width * 0.22).clamp(140.0, 220.0)
         : (media.size.width * 0.6).clamp(180.0, 280.0);
 
+    // Stack all three frames on top of each other and cross-fade by
+    // opacity. AnimatedSwitcher used to recreate Image widgets between
+    // stages, which produced a one-frame "blank" flash because each
+    // asset was re-decoded. Now each frame keeps its element identity,
+    // so the transition is buttery smooth.
+    final stageIndex = _stage.index;
     return Positioned(
       left: 0,
       right: 0,
       bottom: bottom,
       child: Center(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: Image.asset(
-            barAsset,
-            key: ValueKey(barAsset),
-            width: width,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (context, error, stackTrace) =>
-                const SizedBox(height: 30),
+        child: SizedBox(
+          width: width,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              _barFrame(AssetPaths.loadingBarEmpty, width, opacity: 1.0),
+              _barFrame(
+                AssetPaths.loadingBarAlmostFull,
+                width,
+                opacity: stageIndex >= 1 ? 1.0 : 0.0,
+              ),
+              _barFrame(
+                AssetPaths.loadingBarFull,
+                width,
+                opacity: stageIndex >= 2 ? 1.0 : 0.0,
+              ),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _barFrame(String asset, double width, {required double opacity}) {
+    return AnimatedOpacity(
+      opacity: opacity,
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOut,
+      child: Image.asset(
+        asset,
+        width: width,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        gaplessPlayback: true,
+        errorBuilder: (context, error, stackTrace) =>
+            const SizedBox(height: 30),
       ),
     );
   }
