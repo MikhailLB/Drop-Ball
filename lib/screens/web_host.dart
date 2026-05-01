@@ -273,10 +273,30 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
   }
   document.addEventListener('focusin', function(e){
     if (inputLike(e.target)){
+      // Defeat iOS auto-zoom on small inputs by bumping the *computed*
+      // font-size to >=16px while focused, then restoring on blur.
+      try {
+        var t = e.target;
+        var cur = parseFloat(getComputedStyle(t).fontSize) || 0;
+        if (cur < 16){
+          t.dataset.__grPrevFs = t.style.fontSize || '';
+          t.style.setProperty('font-size','16px','important');
+        }
+      } catch(_){}
       setTimeout(focusRoll,250);
       setTimeout(focusRoll,500);
       setTimeout(focusRoll,800);
     }
+  });
+  document.addEventListener('focusout', function(e){
+    try {
+      var t = e.target;
+      if (t && t.dataset && '__grPrevFs' in t.dataset){
+        if (t.dataset.__grPrevFs) t.style.fontSize = t.dataset.__grPrevFs;
+        else t.style.removeProperty('font-size');
+        delete t.dataset.__grPrevFs;
+      }
+    } catch(_){}
   });
   if (window.visualViewport){
     var prev = window.visualViewport.height;
@@ -380,7 +400,15 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
     + 'padding-top:0!important;padding-left:0!important;padding-right:0!important;margin-top:0!important;'
     + 'touch-action:pan-x pan-y!important;'
     + '}'
-    + 'html{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;}';
+    + 'html{-webkit-text-size-adjust:100%!important;text-size-adjust:100%!important;}'
+    // iOS Safari/WKWebView auto-zooms a focused field if its computed
+    // font-size is < 16px. Forcing 16px on every editable element kills
+    // that zoom-in jump without changing visible layout (browsers honor
+    // the rule only at focus-time for inputs).
+    + 'input,textarea,select,[contenteditable="true"]{'
+    + 'font-size:16px!important;max-height:none;'
+    + '-webkit-text-size-adjust:100%!important;'
+    + '}';
   var WANT = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=contain';
   function apply(){
     var head = document.head || document.documentElement;
