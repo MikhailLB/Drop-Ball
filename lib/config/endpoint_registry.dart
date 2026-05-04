@@ -10,18 +10,18 @@ String brandEndpoint() {
   return unpack(a) + unpack(b);
 }
 
-/// AppsFlyer GCD (Get Conversion Data) v5 endpoint.
+/// AppsFlyer GCD (Get Conversion Data) public endpoint.
 ///
-/// Per AppsFlyer docs the legacy GCD API expects the application id
+/// Per AppsFlyer docs the public GCD API expects the application id
 /// in the URL path and the dev-key as a query parameter:
-///   https://gcd.appsflyer.com/install_data/v5.0/{app_id}
+///   https://gcd.appsflyer.com/install_data/v4.0/{app_id}
 ///   ?devkey={dev_key}&device_id={device_id}
 ///
-/// The previous obfuscated URL placed `app_id` as a query param and
-/// omitted `devkey`, which is why every retry call after an Organic
-/// verdict was rejected and silently swallowed.
+/// Do not use the SDK's internal v5 endpoint here: it requires an
+/// AppsFlyer-generated `af_sig` signature and returns
+/// `mismatched af_sig` for app-side HTTP calls.
 String gcdEndpoint(String appId, String deviceId, {required String devKey}) {
-  return 'https://gcd.appsflyer.com/install_data/v5.0/$appId'
+  return 'https://gcd.appsflyer.com/install_data/v4.0/$appId'
       '?devkey=$devKey&device_id=$deviceId';
 }
 

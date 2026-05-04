@@ -178,7 +178,7 @@ class AttributionGateway {
       }
 
       final appId = Platform.isIOS
-          ? BrandConfig.iosAppId
+          ? BrandConfig.storeIdentifier
           : BrandConfig.packageName;
       final uri = Uri.parse(
         gcdEndpoint(appId, uid, devKey: BrandConfig.attributionDevKey),
@@ -186,7 +186,7 @@ class AttributionGateway {
 
       if (kDebugMode) {
         debugPrint(
-          '[AG] GCD retry GET https://gcd.appsflyer.com/install_data/v5.0/'
+          '[AG] GCD retry GET https://gcd.appsflyer.com/install_data/v4.0/'
           '$appId?devkey=***&device_id=$uid',
         );
       }
