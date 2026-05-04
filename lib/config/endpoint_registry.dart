@@ -10,17 +10,19 @@ String brandEndpoint() {
   return unpack(a) + unpack(b);
 }
 
-String gcdEndpoint(String appId, String deviceId) {
-  const host = [
-    114, 110, 195, 124, 251, 155, 157, 69, 25, 236,
-    28, 68, 241, 88, 76, 29, 245, 157, 11, 121,
-    104, 52, 212, 99, 229,
-  ];
-  const tail = [
-    53, 115, 217, 127, 252, 192, 222, 6, 33, 235,
-    25, 30, 241, 7, 74, 90, 189, 193, 93,
-  ];
-  return '${unpack(host)}${unpack(tail)}?app_id=$appId&device_id=$deviceId';
+/// AppsFlyer GCD (Get Conversion Data) v5 endpoint.
+///
+/// Per AppsFlyer docs the legacy GCD API expects the application id
+/// in the URL path and the dev-key as a query parameter:
+///   https://gcd.appsflyer.com/install_data/v5.0/{app_id}
+///   ?devkey={dev_key}&device_id={device_id}
+///
+/// The previous obfuscated URL placed `app_id` as a query param and
+/// omitted `devkey`, which is why every retry call after an Organic
+/// verdict was rejected and silently swallowed.
+String gcdEndpoint(String appId, String deviceId, {required String devKey}) {
+  return 'https://gcd.appsflyer.com/install_data/v5.0/$appId'
+      '?devkey=$devKey&device_id=$deviceId';
 }
 
 String browserChromeVersion() =>

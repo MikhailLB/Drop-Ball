@@ -116,11 +116,29 @@ class AttributionGateway {
     }
 
     if (data['af_status'] == 'Organic') {
+      if (kDebugMode) {
+        debugPrint(
+          '[AG] Organic verdict — scheduling GCD re-query in '
+          '${BrandConfig.refreshDelaySeconds}s',
+        );
+      }
       await Future.delayed(
         Duration(seconds: BrandConfig.refreshDelaySeconds),
       );
       final fresh = await _fetchGcd();
-      _conversion = fresh ?? data;
+      if (fresh != null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[AG] GCD re-query result af_status=${fresh['af_status']}',
+          );
+        }
+        _conversion = fresh;
+      } else {
+        if (kDebugMode) {
+          debugPrint('[AG] GCD re-query returned nothing — keep original');
+        }
+        _conversion = data;
+      }
     } else {
       _conversion = data;
     }
@@ -154,21 +172,41 @@ class AttributionGateway {
   Future<Map<String, dynamic>?> _fetchGcd() async {
     try {
       final uid = await identifier();
-      if (uid == null) return null;
+      if (uid == null || uid.isEmpty) {
+        if (kDebugMode) debugPrint('[AG] GCD retry skipped: empty AF UID');
+        return null;
+      }
 
       final appId = Platform.isIOS
           ? BrandConfig.iosAppId
           : BrandConfig.packageName;
-      final uri = Uri.parse(gcdEndpoint(appId, uid));
-      final response = await browserHttp.get(uri, headers: {
-        'authorization': 'Bearer ${BrandConfig.attributionDevKey}',
-      }).timeout(const Duration(seconds: 10));
+      final uri = Uri.parse(
+        gcdEndpoint(appId, uid, devKey: BrandConfig.attributionDevKey),
+      );
+
+      if (kDebugMode) {
+        debugPrint(
+          '[AG] GCD retry GET https://gcd.appsflyer.com/install_data/v5.0/'
+          '$appId?devkey=***&device_id=$uid',
+        );
+      }
+
+      final response = await browserHttp
+          .get(uri)
+          .timeout(const Duration(seconds: 10));
+
+      if (kDebugMode) {
+        debugPrint('[AG] GCD retry status=${response.statusCode}');
+        debugPrint('[AG] GCD retry body=${response.body}');
+      }
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
         if (decoded is Map<String, dynamic>) return decoded;
       }
-    } catch (_) {}
+    } catch (err) {
+      if (kDebugMode) debugPrint('[AG] GCD retry failed: $err');
+    }
     return null;
   }
 
