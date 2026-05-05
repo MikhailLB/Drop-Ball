@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:path_provider/path_provider.dart';
 import 'browser_http.dart';
 import 'local_store.dart';
 
@@ -292,41 +292,37 @@ class CloudPushClient {
     final notif = message.notification;
     if (notif == null) return;
 
-    String? imageUrl;
-    if (Platform.isAndroid) {
-      imageUrl = notif.android?.imageUrl;
-    } else {
-      imageUrl = notif.apple?.imageUrl;
-    }
+    // On iOS the system already presents the FCM notification in foreground
+    // (alert/badge/sound enabled in bootstrap) and the Notification Service
+    // Extension attaches the image before display. Scheduling our own
+    // flutter_local_notifications copy here used to produce a duplicate
+    // banner and broke tap routing because Firebase's swizzled
+    // UNUserNotificationCenter delegate intercepts taps on locally-scheduled
+    // notifications differently from FCM-displayed ones. Taps on the system
+    // notification flow through onMessageOpenedApp which onRemoteTarget
+    // subscribers already handle.
+    if (Platform.isIOS) return;
+
+    final imageUrl = notif.android?.imageUrl;
 
     AndroidNotificationDetails? androidDetails;
-    DarwinNotificationDetails iosDetails = const DarwinNotificationDetails();
 
     if (imageUrl != null && imageUrl.isNotEmpty) {
-      if (Platform.isAndroid) {
-        final bytes = await _downloadPicture(imageUrl);
-        if (bytes != null) {
-          androidDetails = AndroidNotificationDetails(
-            pushChannelId,
-            pushChannelLabel,
-            importance: Importance.high,
-            priority: Priority.high,
-            icon: pushIconRes,
-            styleInformation: BigPictureStyleInformation(
-              ByteArrayAndroidBitmap(bytes),
-              largeIcon: const DrawableResourceAndroidBitmap(
-                '@mipmap/ic_launcher',
-              ),
+      final bytes = await _downloadPicture(imageUrl);
+      if (bytes != null) {
+        androidDetails = AndroidNotificationDetails(
+          pushChannelId,
+          pushChannelLabel,
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: pushIconRes,
+          styleInformation: BigPictureStyleInformation(
+            ByteArrayAndroidBitmap(bytes),
+            largeIcon: const DrawableResourceAndroidBitmap(
+              '@mipmap/ic_launcher',
             ),
-          );
-        }
-      } else if (Platform.isIOS) {
-        final filePath = await _downloadToTempFile(imageUrl);
-        if (filePath != null) {
-          iosDetails = DarwinNotificationDetails(
-            attachments: [DarwinNotificationAttachment(filePath)],
-          );
-        }
+          ),
+        );
       }
     }
 
@@ -344,7 +340,7 @@ class CloudPushClient {
       notif.hashCode,
       notif.title,
       notif.body,
-      NotificationDetails(android: androidDetails, iOS: iosDetails),
+      NotificationDetails(android: androidDetails),
       payload: payload,
     );
   }
@@ -389,25 +385,5 @@ class CloudPushClient {
       if (response.statusCode == 200) return response.bodyBytes;
     } catch (_) {}
     return null;
-  }
-
-  /// iOS attachments must be a real file on disk (URL is not enough).
-  /// Save the downloaded image into the temp directory and return the
-  /// absolute path so DarwinNotificationAttachment can render it.
-  Future<String?> _downloadToTempFile(String url) async {
-    try {
-      final bytes = await _downloadPicture(url);
-      if (bytes == null) return null;
-      final dir = await getTemporaryDirectory();
-      var ext = Uri.parse(url).path.split('.').last.toLowerCase();
-      if (ext.length > 4 || ext.isEmpty) ext = 'jpg';
-      final file = File(
-        '${dir.path}/push_${DateTime.now().millisecondsSinceEpoch}.$ext',
-      );
-      await file.writeAsBytes(bytes, flush: true);
-      return file.path;
-    } catch (_) {
-      return null;
-    }
   }
 }
