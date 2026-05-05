@@ -39,6 +39,17 @@ abstract final class BrandConfig {
   static const cooldownSeconds = 259200;
   static const refreshDelaySeconds = 5;
 
+  /// Debug-only override: AppsFlyer in the current SDK build started reporting
+  /// `af_status: Organic` for every install on this branch, even when the
+  /// install came from a OneLink. That makes it impossible to actually
+  /// exercise the gray flow on a TestFlight / dev build because the gateway
+  /// short-circuits to "no offer" for organic users. When this flag is `true`
+  /// the attribution layer substitutes a hard-coded Non-organic conversion
+  /// payload before composing the gateway request and reports
+  /// `hasNonOrganicSignal = true` so the boot flow proceeds to dispatch.
+  /// MUST be set back to `false` before shipping.
+  static const bool debugForceNonOrganic = true;
+
   static String get attributionDevKey => Platform.isIOS
       ? unpack(_attributionDevKeyIos)
       : unpack(_attributionDevKeyAndroid);
