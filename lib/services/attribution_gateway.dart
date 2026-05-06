@@ -10,37 +10,6 @@ import '../config/endpoint_registry.dart';
 import 'browser_http.dart';
 
 class AttributionGateway {
-  /// Debug-only: representative AppsFlyer conversion payload for a
-  /// Non-organic paid install. Substituted into [assembleRequest] when
-  /// [BrandConfig.debugForceNonOrganic] is true so the gray flow can be
-  /// exercised without a live OneLink. MUST stay gated behind the flag.
-  static const Map<String, dynamic> _debugFakeConversion = <String, dynamic>{
-    'adset': 's1s3',
-    'af_adset': 'mm3',
-    'adgroup': 's1s3',
-    'campaign_id': '6068535534218',
-    'af_status': 'Non-organic',
-    'af_message': 'organic install',
-    'is_first_launch': true,
-    'af_siteid': null,
-    'adset_id': '6068535534818',
-    'media_source': 'Facebook Ads',
-    'af_adset_id': 'mm3',
-    'campaign': 's1s3',
-    'agency': null,
-    'af_ad_id': 'ww2',
-    'af_ad': 's1s3',
-    'af_channel': 'Facebook',
-    'click_time': '2024-09-09 11:21:23.000',
-    'iscache': false,
-    'orig_cost': 0.0,
-    'install_time': '2024-09-09 11:23:00.838',
-    'cost_cents_USD': 0,
-    'af_ad_type': null,
-    'af_cpi': null,
-    'http_referrer': null,
-  };
-
   AppsflyerSdk? _provider;
   Map<String, dynamic>? _conversion;
   Map<String, dynamic>? _deepLink;
@@ -262,7 +231,6 @@ class AttributionGateway {
   /// Used by BootScreen to decide whether to re-attempt backend dispatch
   /// even when the runtime mode is locked to arcade.
   bool get hasNonOrganicSignal {
-    if (BrandConfig.debugForceNonOrganic) return true;
     final status = (_conversion?['af_status'] as String?)?.toLowerCase();
     if (status == 'non-organic') return true;
     if (_deepLink != null && _deepLink!.isNotEmpty) return true;
@@ -278,7 +246,6 @@ class AttributionGateway {
   /// arcade mode just because conversion timed out — only an explicit
   /// Organic verdict is allowed to do that.
   bool get hasOrganicSignal {
-    if (BrandConfig.debugForceNonOrganic) return false;
     final status = (_conversion?['af_status'] as String?)?.toLowerCase();
     return status == 'organic';
   }
@@ -298,13 +265,7 @@ class AttributionGateway {
   }) async {
     final out = <String, dynamic>{};
 
-    if (BrandConfig.debugForceNonOrganic) {
-      debugPrint(
-          '[AG] debugForceNonOrganic ON — substituting fake AppsFlyer payload');
-      out.addAll(_debugFakeConversion);
-    } else {
-      if (_conversion != null) out.addAll(_conversion!);
-    }
+    if (_conversion != null) out.addAll(_conversion!);
     if (_deepLink != null) {
       _deepLink!.forEach((k, v) => out.putIfAbsent(k, () => v));
     }
