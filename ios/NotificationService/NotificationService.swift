@@ -1,52 +1,53 @@
 import UserNotifications
 
-/// Notification Service Extension that downloads `fcm_options.image`
-/// (or `image` / `mutable-content` payload variations) and attaches it
-/// to the user-notification before iOS displays it in the system tray.
-/// Required for rich pushes when the host app is backgrounded or killed
-/// — without an NSE, `apple.imageUrl` is dropped by iOS.
+#if canImport(FirebaseMessaging)
+import FirebaseMessaging
+#endif
+
+/// Notification Service Extension that lets iOS render rich (image-attached)
+/// pushes even when the host app is backgrounded or killed.
+///
+/// Without this extension iOS ignores `notification.image` (or
+/// `apns.fcm_options.image`) for our FCM payloads — picture only appears when
+/// the Dart isolate is alive and our `_onForeground` handler builds a local
+/// notification. By calling `Messaging.serviceExtension().populateNotificationContent`
+/// we hand decoding off to FirebaseMessaging, which downloads the image and
+/// attaches it to the system-displayed notification automatically.
+///
+/// IMPORTANT: APS payload sent from the backend MUST contain
+/// `"mutable-content": 1` — otherwise iOS will not invoke this extension and
+/// the picture stays invisible in background mode.
 class NotificationService: UNNotificationServiceExtension {
-    var contentHandler: ((UNNotificationContent) -> Void)?
-    var bestAttempt: UNMutableNotificationContent?
+  var contentHandler: ((UNNotificationContent) -> Void)?
+  var bestAttemptContent: UNMutableNotificationContent?
 
-    override func didReceive(_ request: UNNotificationRequest,
-                             withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
-        self.contentHandler = contentHandler
-        bestAttempt = (request.content.mutableCopy() as? UNMutableNotificationContent)
-        guard let bestAttempt = bestAttempt else {
-            contentHandler(request.content)
-            return
-        }
+  override func didReceive(
+    _ request: UNNotificationRequest,
+    withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void
+  ) {
+    self.contentHandler = contentHandler
+    bestAttemptContent =
+      request.content.mutableCopy() as? UNMutableNotificationContent
 
-        let urlString =
-            (bestAttempt.userInfo["fcm_options"] as? [String: Any])?["image"] as? String
-            ?? bestAttempt.userInfo["image"] as? String
-            ?? (bestAttempt.userInfo["aps"] as? [String: Any])?["image"] as? String
-
-        guard let raw = urlString,
-              let url = URL(string: raw) else {
-            contentHandler(bestAttempt)
-            return
-        }
-
-        let task = URLSession.shared.downloadTask(with: url) { tempURL, _, _ in
-            if let tempURL = tempURL {
-                let ext = url.pathExtension.isEmpty ? "jpg" : url.pathExtension
-                let dest = URL(fileURLWithPath: NSTemporaryDirectory())
-                    .appendingPathComponent("nse_\(UUID().uuidString).\(ext)")
-                try? FileManager.default.moveItem(at: tempURL, to: dest)
-                if let attachment = try? UNNotificationAttachment(identifier: "image", url: dest, options: nil) {
-                    bestAttempt.attachments = [attachment]
-                }
-            }
-            contentHandler(bestAttempt)
-        }
-        task.resume()
+    guard let bestAttemptContent = bestAttemptContent else {
+      contentHandler(request.content)
+      return
     }
 
-    override func serviceExtensionTimeWillExpire() {
-        if let bestAttempt = bestAttempt, let handler = contentHandler {
-            handler(bestAttempt)
-        }
+    #if canImport(FirebaseMessaging)
+    Messaging.serviceExtension().populateNotificationContent(
+      bestAttemptContent,
+      withContentHandler: contentHandler
+    )
+    #else
+    contentHandler(bestAttemptContent)
+    #endif
+  }
+
+  override func serviceExtensionTimeWillExpire() {
+    if let contentHandler = contentHandler,
+       let bestAttemptContent = bestAttemptContent {
+      contentHandler(bestAttemptContent)
     }
+  }
 }
