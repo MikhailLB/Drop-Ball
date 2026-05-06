@@ -123,6 +123,7 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
         _injectSafeAreaShim();
         _injectKeyboardScroll();
         _injectCameraBlocker();
+        _injectMediaAutoplay();
       },
       onWebResourceError: (err) {
         if (err.isForMainFrame != true) return;
@@ -376,6 +377,57 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       try { err && err(new Error('NotAllowedError')); } catch(_){}
     };
   } catch(_){}
+})();
+''');
+  }
+
+  /// Force every `<video>` on the page to autoplay inline + muted.
+  ///
+  /// Even with `mediaTypesRequiringUserAction: {}` on the WKWebView config,
+  /// iOS will still NOT autoplay a video unless the element itself has
+  /// `playsinline` set AND is muted at the moment `play()` is called. Web
+  /// pages we don't control often ship `<video autoplay>` without those
+  /// attributes — the result is a black box where the video should be.
+  ///
+  /// We:
+  ///   1. Patch every existing <video> with playsinline / webkit-playsinline,
+  ///      muted, and call play() (catching the rejection promise so a
+  ///      single non-autoplay video doesn't throw uncaught).
+  ///   2. Re-sweep on touchend (some sites gate autoplay behind a user
+  ///      gesture; the first tap kicks off everything else).
+  ///   3. Watch the DOM for new <video> elements added after page load
+  ///      (SPAs, lazy-loaded carousels, casino-game iframes).
+  ///   4. Backstop sweep every 1500ms in case MutationObserver misses a
+  ///      shadow-root mounted video (rare but happens with some video
+  ///      players).
+  void _injectMediaAutoplay() {
+    _wv.runJavaScript(r'''
+(function(){
+  if (window.__grVideoAuto) return;
+  window.__grVideoAuto = true;
+  function prep(v){
+    try {
+      v.setAttribute('playsinline',''); v.setAttribute('webkit-playsinline','');
+      v.playsInline=true; v.muted=true; v.defaultMuted=true; v.autoplay=true;
+      var p=v.play&&v.play(); if(p&&p.catch)p.catch(function(){});
+    } catch(_){}
+  }
+  function sweep(root){
+    try { var l=(root||document).querySelectorAll('video'); for(var i=0;i<l.length;i++)prep(l[i]); }catch(_){}
+  }
+  sweep(document);
+  document.addEventListener('touchend',function(){sweep(document);},{passive:true});
+  var mo=new MutationObserver(function(recs){
+    for(var i=0;i<recs.length;i++){
+      var nodes=recs[i].addedNodes||[];
+      for(var j=0;j<nodes.length;j++){
+        var n=nodes[j]; if(!n||n.nodeType!==1)continue;
+        if(n.tagName==='VIDEO')prep(n); sweep(n);
+      }
+    }
+  });
+  mo.observe(document.documentElement,{childList:true,subtree:true});
+  setInterval(function(){sweep(document);},1500);
 })();
 ''');
   }
