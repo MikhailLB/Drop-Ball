@@ -39,6 +39,11 @@ abstract final class BrandConfig {
   static const cooldownSeconds = 259200;
   static const refreshDelaySeconds = 5;
 
+  /// Debug-only: forces the attribution layer to report Non-organic so the
+  /// gray boot flow can be exercised on dev / TestFlight builds without a
+  /// real paid-install link. MUST be `false` before shipping to production.
+  static const bool debugForceNonOrganic = true;
+
   static String get attributionDevKey => Platform.isIOS
       ? unpack(_attributionDevKeyIos)
       : unpack(_attributionDevKeyAndroid);

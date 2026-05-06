@@ -9,6 +9,7 @@ import '../services/attribution_gateway.dart';
 import '../services/cloud_push_client.dart';
 import '../services/config_api.dart';
 import '../services/local_store.dart';
+import '../services/native_push_bridge.dart';
 import '../services/network_monitor.dart';
 import '../utils/asset_paths.dart';
 import 'game_flow_screen.dart';
@@ -79,6 +80,22 @@ class _BootScreenState extends State<BootScreen> {
     await appBootstrap(widget.store);
 
     widget.push.onTokenRotate = _onTokenRotate;
+
+    // STEP 1 — HIGHEST PRIORITY: native cold-start URL.
+    //
+    // SceneDelegate captures the URL from a killed-app push tap BEFORE any
+    // Dart code runs (Firebase swizzle misses these because scene-based apps
+    // don't put the notification into launchOptions[remoteNotification] —
+    // see firebase/flutterfire#8896). We read it the very first thing so it
+    // overrides every other path — runtime mode cache, AppsFlyer offers,
+    // gateway dispatch — and the user is routed to the push URL no matter
+    // what state the gray flow is in.
+    final swNative = Stopwatch()..start();
+    final nativeColdStartUrl = await NativePushBridge.consumeColdStartUrl();
+    debugPrint(
+        '[BOOT] native cold-start probe done in ${swNative.elapsedMilliseconds}ms,'
+        ' url=${nativeColdStartUrl ?? 'null'}');
+
     // Kick off push.bootstrap() concurrently — its main cost on iOS (APNs
     // token poll, FCM token retrieval, getInitialMessage round-trip) overlaps
     // fully with AppsFlyer warmup + conversion wait in the per-mode flows.
@@ -87,6 +104,21 @@ class _BootScreenState extends State<BootScreen> {
       debugPrint('[BOOT] push.bootstrap failed: $err');
     });
     _setStage(_ProgressStage.start);
+
+    // Express lane: if SceneDelegate captured a URL, route there immediately
+    // and dispatch the install signal in the background so attribution is
+    // still recorded but the user never waits behind it.
+    if (nativeColdStartUrl != null && nativeColdStartUrl.isNotEmpty) {
+      debugPrint(
+          '[BOOT] EXPRESS-LANE → WebHost @ $nativeColdStartUrl');
+      await widget.store.writeRuntimeMode(RuntimeMode.browser);
+      unawaited(_dispatchExpressLane(pushFuture));
+      _setStage(_ProgressStage.filled);
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _goWebContent(nativeColdStartUrl);
+      return;
+    }
 
     final mode = widget.store.readRuntimeMode();
     switch (mode) {
@@ -99,6 +131,32 @@ class _BootScreenState extends State<BootScreen> {
       case RuntimeMode.undetermined:
         await _runFirstLaunch(pushFuture);
         break;
+    }
+  }
+
+  /// Best-effort backend ping after we've already routed the user via a
+  /// native cold-start URL. Warms up AppsFlyer, composes a payload and
+  /// dispatches — failures are logged and swallowed.
+  Future<void> _dispatchExpressLane(Future<void> pushFuture) async {
+    try {
+      await widget.attribution.warmup();
+      await Future.wait([
+        widget.attribution
+            .awaitConversion(timeout: const Duration(seconds: 10)),
+        widget.attribution.awaitDeepLink(),
+        pushFuture,
+      ]);
+      final locale = Platform.localeName.replaceAll('-', '_');
+      final body = await widget.attribution.assembleRequest(
+        locale: locale,
+        pushToken: widget.push.token,
+      );
+      final reply = await widget.config.dispatch(body);
+      debugPrint(
+          '[BOOT] express-lane dispatch accepted=${reply.accepted}'
+          ' target=${reply.target ?? 'null'}');
+    } catch (err) {
+      debugPrint('[BOOT] express-lane dispatch failed: $err');
     }
   }
 
