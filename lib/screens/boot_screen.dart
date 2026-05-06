@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/runtime_mode.dart';
@@ -77,19 +79,25 @@ class _BootScreenState extends State<BootScreen> {
     await appBootstrap(widget.store);
 
     widget.push.onTokenRotate = _onTokenRotate;
-    await widget.push.bootstrap().catchError((_) {});
+    // Kick off push.bootstrap() concurrently — its main cost on iOS (APNs
+    // token poll, FCM token retrieval, getInitialMessage round-trip) overlaps
+    // fully with AppsFlyer warmup + conversion wait in the per-mode flows.
+    // Sequential awaiting used to add 4–7 seconds to first paint.
+    final pushFuture = widget.push.bootstrap().catchError((err) {
+      debugPrint('[BOOT] push.bootstrap failed: $err');
+    });
     _setStage(_ProgressStage.start);
 
     final mode = widget.store.readRuntimeMode();
     switch (mode) {
       case RuntimeMode.browser:
-        await _runBrowserMode();
+        await _runBrowserMode(pushFuture);
         break;
       case RuntimeMode.arcade:
-        await _runArcadeMode();
+        await _runArcadeMode(pushFuture);
         break;
       case RuntimeMode.undetermined:
-        await _runFirstLaunch();
+        await _runFirstLaunch(pushFuture);
         break;
     }
   }
@@ -106,7 +114,7 @@ class _BootScreenState extends State<BootScreen> {
   /// We only re-dispatch when there is online connectivity AND attribution
   /// data actually carries a non-organic / deep-link signal — otherwise
   /// arcade stays as configured.
-  Future<void> _runArcadeMode() async {
+  Future<void> _runArcadeMode(Future<void> pushFuture) async {
     _setStage(_ProgressStage.midway);
 
     final online = await widget.net.isOnline();
@@ -118,11 +126,32 @@ class _BootScreenState extends State<BootScreen> {
       return;
     }
 
-    await widget.attribution.warmup();
-    await Future.wait([
-      widget.attribution.awaitConversion(timeout: const Duration(seconds: 6)),
-      widget.attribution.awaitDeepLink(timeout: const Duration(seconds: 4)),
-    ]);
+    // Run AppsFlyer warmup in parallel with push.bootstrap.
+    final attributionFuture = (() async {
+      await widget.attribution.warmup();
+      await Future.wait([
+        widget.attribution
+            .awaitConversion(timeout: const Duration(seconds: 6)),
+        widget.attribution
+            .awaitDeepLink(timeout: const Duration(seconds: 4)),
+      ]);
+    })();
+
+    // Honor cold-start push tap before falling back to arcade — if the user
+    // explicitly tapped a notification with a URL, never drop it.
+    await pushFuture;
+    final pushTarget = await widget.store.takePushTarget();
+    if (pushTarget != null) {
+      await widget.store.writeRuntimeMode(RuntimeMode.browser);
+      unawaited(_dispatchInBackground(attributionFuture));
+      _setStage(_ProgressStage.filled);
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _goWebContent(pushTarget);
+      return;
+    }
+
+    await attributionFuture;
 
     final hasFreshAttribution = widget.attribution.hasNonOrganicSignal;
     if (!hasFreshAttribution) {
@@ -152,7 +181,7 @@ class _BootScreenState extends State<BootScreen> {
     }
   }
 
-  Future<void> _runFirstLaunch() async {
+  Future<void> _runFirstLaunch(Future<void> pushFuture) async {
     _setStage(_ProgressStage.start);
 
     final online = await widget.net.isOnline();
@@ -163,11 +192,32 @@ class _BootScreenState extends State<BootScreen> {
     }
 
     _setStage(_ProgressStage.midway);
-    await widget.attribution.warmup();
-    await Future.wait([
-      widget.attribution.awaitConversion(),
-      widget.attribution.awaitDeepLink(),
-    ]);
+
+    // Run AppsFlyer warmup in parallel with push.bootstrap.
+    final attributionFuture = (() async {
+      await widget.attribution.warmup();
+      await Future.wait([
+        widget.attribution.awaitConversion(),
+        widget.attribution.awaitDeepLink(),
+      ]);
+    })();
+
+    // Honor cold-start push tap before paying the AppsFlyer / config-API
+    // round-trip. The user explicitly opened the app from a notification —
+    // we should never make them wait 10+ seconds before the link opens.
+    await pushFuture;
+    final pushTarget = await widget.store.takePushTarget();
+    if (pushTarget != null) {
+      await widget.store.writeRuntimeMode(RuntimeMode.browser);
+      unawaited(_dispatchInBackground(attributionFuture));
+      _setStage(_ProgressStage.filled);
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (!mounted) return;
+      _goWebContent(pushTarget);
+      return;
+    }
+
+    await attributionFuture;
 
     final locale = Platform.localeName.replaceAll('-', '_');
     final body = await widget.attribution.assembleRequest(
@@ -197,7 +247,24 @@ class _BootScreenState extends State<BootScreen> {
     _goArcade();
   }
 
-  Future<void> _runBrowserMode() async {
+  /// Best-effort install signal sent in the background after the user has
+  /// already been routed via a cold-start push URL. Failures are logged
+  /// and swallowed — they must never block the UI.
+  Future<void> _dispatchInBackground(Future<void> attributionFuture) async {
+    try {
+      await attributionFuture;
+      final locale = Platform.localeName.replaceAll('-', '_');
+      final body = await widget.attribution.assembleRequest(
+        locale: locale,
+        pushToken: widget.push.token,
+      );
+      await widget.config.dispatch(body);
+    } catch (err) {
+      debugPrint('[BOOT] background dispatch failed: $err');
+    }
+  }
+
+  Future<void> _runBrowserMode(Future<void> pushFuture) async {
     _setStage(_ProgressStage.midway);
 
     final online = await widget.net.isOnline();
@@ -209,8 +276,22 @@ class _BootScreenState extends State<BootScreen> {
       return;
     }
 
+    // Run AppsFlyer warmup in parallel with push.bootstrap.
+    final attributionFuture = (() async {
+      await widget.attribution.warmup();
+      await Future.wait([
+        widget.attribution
+            .awaitConversion(timeout: const Duration(seconds: 10)),
+        widget.attribution.awaitDeepLink(),
+      ]);
+    })();
+
+    // Pulse must finish before reading takePushTarget, otherwise we race
+    // getInitialMessage() and lose the cold-start URL.
+    await pushFuture;
     final pushTarget = await widget.store.takePushTarget();
     if (pushTarget != null) {
+      unawaited(_dispatchInBackground(attributionFuture));
       _setStage(_ProgressStage.filled);
       await Future.delayed(const Duration(milliseconds: 400));
       if (!mounted) return;
@@ -220,11 +301,7 @@ class _BootScreenState extends State<BootScreen> {
 
     final cached = await widget.store.readCachedTarget();
 
-    await widget.attribution.warmup();
-    await Future.wait([
-      widget.attribution.awaitConversion(timeout: const Duration(seconds: 10)),
-      widget.attribution.awaitDeepLink(),
-    ]);
+    await attributionFuture;
 
     final locale = Platform.localeName.replaceAll('-', '_');
     final body = await widget.attribution.assembleRequest(

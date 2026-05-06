@@ -101,8 +101,13 @@ class CloudPushClient {
     if (_msg == null) return null;
 
     if (Platform.isIOS) {
+      // 5 attempts × 500ms = 2.5s ceiling. push.bootstrap is now run in
+      // parallel with attribution warmup so the gray flow can usually absorb
+      // this wait, but if APNs genuinely never arrives we'd rather fail fast
+      // than block the splash. The poll exits early on the first non-empty
+      // token, so a healthy device pays only the actual arrival latency.
       String? apnsToken;
-      for (var attempt = 1; attempt <= 6; attempt++) {
+      for (var attempt = 1; attempt <= 5; attempt++) {
         apnsToken = await _msg!.getAPNSToken();
         if (kDebugMode) {
           debugPrint(
@@ -111,7 +116,7 @@ class CloudPushClient {
           );
         }
         if (apnsToken != null && apnsToken.isNotEmpty) break;
-        await Future<void>.delayed(const Duration(milliseconds: 700));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
       }
     }
 
