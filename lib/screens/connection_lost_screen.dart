@@ -91,6 +91,7 @@ class _ConnectionLostScreenState extends State<ConnectionLostScreen>
             _buildLandscapeButton(mq)
           else
             _buildPortraitButton(mq),
+          if (landscape) _buildTopHint(mq),
         ],
       ),
     );
@@ -132,7 +133,6 @@ class _ConnectionLostScreenState extends State<ConnectionLostScreen>
     );
   }
 
-  // Landscape: кнопка меньше, по центру, ниже; хинт над кнопкой
   Widget _buildLandscapeButton(MediaQueryData mq) {
     final btnWidth = mq.size.width * 0.30;
     final bottomPad = mq.padding.bottom + 14.0;
@@ -141,27 +141,47 @@ class _ConnectionLostScreenState extends State<ConnectionLostScreen>
       left: 0,
       right: 0,
       bottom: bottomPad,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          AnimatedOpacity(
-            opacity: _showHint ? 1.0 : 0.0,
-            duration: const Duration(milliseconds: 300),
-            child: const Padding(
-              padding: EdgeInsets.only(bottom: 6),
-              child: Text(
-                'No connection. Check your internet.',
+      child: Center(
+        child: ScaleTransition(
+          scale: _scale,
+          child: _buildButton(width: btnWidth, height: 44),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopHint(MediaQueryData mq) {
+    return Positioned(
+      top: mq.padding.top + 12,
+      left: 24,
+      right: 24,
+      child: AnimatedSlide(
+        offset: _showHint ? Offset.zero : const Offset(0, -2),
+        duration: const Duration(milliseconds: 350),
+        curve: Curves.easeOutCubic,
+        child: AnimatedOpacity(
+          opacity: _showHint ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 300),
+          child: Center(
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Text(
+                'Check your internet connection and tap Retry',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
           ),
-          ScaleTransition(
-            scale: _scale,
-            child: _buildButton(width: btnWidth, height: 44),
-          ),
-        ],
+        ),
       ),
     );
   }

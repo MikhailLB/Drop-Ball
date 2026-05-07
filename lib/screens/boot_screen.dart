@@ -39,17 +39,24 @@ class BootScreen extends StatefulWidget {
   State<BootScreen> createState() => _BootScreenState();
 }
 
-class _BootScreenState extends State<BootScreen> {
+class _BootScreenState extends State<BootScreen>
+    with SingleTickerProviderStateMixin {
   _ProgressStage _stage = _ProgressStage.start;
   bool _leaving = false;
   bool _assetsPrecached = false;
+  late final AnimationController _shimmer;
+  late final Animation<double> _shimmerOpacity;
 
   @override
   void initState() {
     super.initState();
-    // Other screens (game flow) lock portrait. When BootScreen is
-    // entered after them (e.g. retry from offline), make sure the
-    // splash itself can be shown in any orientation.
+    _shimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+    _shimmerOpacity = Tween<double>(begin: 0.72, end: 1.0).animate(
+      CurvedAnimation(parent: _shimmer, curve: Curves.easeInOut),
+    );
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -357,8 +364,6 @@ class _BootScreenState extends State<BootScreen> {
       return;
     }
 
-    final cached = await widget.store.readCachedTarget();
-
     await attributionFuture;
 
     final locale = Platform.localeName.replaceAll('-', '_');
@@ -375,6 +380,7 @@ class _BootScreenState extends State<BootScreen> {
       _goWebContent(reply.target!);
       return;
     }
+    final cached = await widget.store.readCachedTarget();
     if (cached != null) {
       _goWebContent(cached);
     } else {
@@ -472,6 +478,7 @@ class _BootScreenState extends State<BootScreen> {
 
   @override
   void dispose() {
+    _shimmer.dispose();
     widget.push.onTokenRotate = null;
     super.dispose();
   }
@@ -605,16 +612,19 @@ class _BootScreenState extends State<BootScreen> {
   Widget _barFrame(String asset, double width, {required double opacity}) {
     return AnimatedOpacity(
       opacity: opacity,
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeOut,
-      child: Image.asset(
-        asset,
-        width: width,
-        fit: BoxFit.contain,
-        filterQuality: FilterQuality.high,
-        gaplessPlayback: true,
-        errorBuilder: (context, error, stackTrace) =>
-            const SizedBox(height: 30),
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeInOut,
+      child: FadeTransition(
+        opacity: _shimmerOpacity,
+        child: Image.asset(
+          asset,
+          width: width,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) =>
+              const SizedBox(height: 30),
+        ),
       ),
     );
   }

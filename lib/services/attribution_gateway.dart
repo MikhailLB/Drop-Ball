@@ -266,11 +266,11 @@ class AttributionGateway {
     final out = <String, dynamic>{};
 
     if (_conversion != null) out.addAll(_conversion!);
-    if (_deepLink != null) {
-      _deepLink!.forEach((k, v) => out.putIfAbsent(k, () => v));
-    }
     if (_reopen != null) {
       _reopen!.forEach((k, v) => out.putIfAbsent(k, () => v));
+    }
+    if (_deepLink != null) {
+      out.addAll(_deepLink!);
     }
 
     final uid = await identifier();
