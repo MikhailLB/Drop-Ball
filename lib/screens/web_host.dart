@@ -122,7 +122,6 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
         _firstFinalUrl ??= url;
         _injectSafeAreaShim();
         _injectKeyboardScroll();
-        _injectCameraBlocker();
         _injectMediaAutoplay();
       },
       onWebResourceError: (err) {
@@ -307,76 +306,6 @@ class _WebHostState extends State<WebHost> with WidgetsBindingObserver {
       prev = h;
     });
   }
-})();
-''');
-  }
-
-  /// Strip the `capture` attribute from every `<input type="file">` and
-  /// disable `navigator.mediaDevices.getUserMedia` so iOS WKWebView never
-  /// reaches UIImagePicker's camera source. The app intentionally does not
-  /// declare NSCameraUsageDescription / NSMicrophoneUsageDescription, so
-  /// any request for camera or mic would crash the process. Photo Library
-  /// uploads still work because the picker falls back to the gallery.
-  void _injectCameraBlocker() {
-    _wv.runJavaScript(r'''
-(function(){
-  if (window.__grNoCam) return;
-  window.__grNoCam = true;
-
-  function strip(el){
-    if (!el || el.tagName !== 'INPUT') return;
-    if ((el.type || '').toLowerCase() !== 'file') return;
-    if (el.hasAttribute('capture')) el.removeAttribute('capture');
-    var accept = (el.getAttribute('accept') || '').toLowerCase();
-    if (accept.indexOf('video') !== -1 || accept.indexOf('audio') !== -1){
-      el.setAttribute('accept', 'image/*');
-    }
-  }
-  function sweep(){
-    var nodes = document.querySelectorAll('input[type=file]');
-    for (var i = 0; i < nodes.length; i++) strip(nodes[i]);
-  }
-  sweep();
-  var mo = new MutationObserver(function(muts){
-    for (var i = 0; i < muts.length; i++){
-      var m = muts[i];
-      if (m.type === 'attributes'){ strip(m.target); continue; }
-      for (var j = 0; j < m.addedNodes.length; j++){
-        var n = m.addedNodes[j];
-        if (!n || n.nodeType !== 1) continue;
-        strip(n);
-        if (n.querySelectorAll){
-          var sub = n.querySelectorAll('input[type=file]');
-          for (var k = 0; k < sub.length; k++) strip(sub[k]);
-        }
-      }
-    }
-  });
-  mo.observe(document.documentElement, {
-    childList: true, subtree: true,
-    attributes: true, attributeFilter: ['capture','accept','type']
-  });
-
-  // getUserMedia / mediaDevices are unavailable in WKWebView anyway, but
-  // stub them defensively so any site code that probes them gets a
-  // graceful rejection instead of throwing in the user's face.
-  try {
-    var blocked = function(){
-      return Promise.reject(new DOMException('NotAllowedError'));
-    };
-    if (navigator.mediaDevices){
-      navigator.mediaDevices.getUserMedia = blocked;
-      navigator.mediaDevices.getDisplayMedia = blocked;
-    } else {
-      Object.defineProperty(navigator, 'mediaDevices', {
-        configurable: true,
-        value: { getUserMedia: blocked, getDisplayMedia: blocked }
-      });
-    }
-    if (navigator.getUserMedia) navigator.getUserMedia = function(_, __, err){
-      try { err && err(new Error('NotAllowedError')); } catch(_){}
-    };
-  } catch(_){}
 })();
 ''');
   }

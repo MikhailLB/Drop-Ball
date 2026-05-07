@@ -40,23 +40,33 @@ class BootScreen extends StatefulWidget {
 }
 
 class _BootScreenState extends State<BootScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   _ProgressStage _stage = _ProgressStage.start;
   bool _leaving = false;
-  bool _assetsPrecached = false;
-  late final AnimationController _shimmer;
-  late final Animation<double> _shimmerOpacity;
+
+  late final AnimationController _barCtrl;
+  late final AnimationController _glowCtrl;
+  late final AnimationController _dotsCtrl;
 
   @override
   void initState() {
     super.initState();
-    _shimmer = AnimationController(
+
+    _barCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-    _shimmerOpacity = Tween<double>(begin: 0.72, end: 1.0).animate(
-      CurvedAnimation(parent: _shimmer, curve: Curves.easeInOut),
+      duration: const Duration(milliseconds: 800),
     );
+
+    _glowCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    )..repeat(reverse: true);
+
+    _dotsCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -64,19 +74,6 @@ class _BootScreenState extends State<BootScreen>
       DeviceOrientation.landscapeRight,
     ]);
     _kickoff();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_assetsPrecached) return;
-    _assetsPrecached = true;
-    // Pre-warm progress-bar frames so AnimatedOpacity doesn't flash to a
-    // blank cell on the first stage transition (assets are decoded lazily
-    // otherwise and the user sees a one-frame gap mid-animation).
-    precacheImage(const AssetImage(AssetPaths.loadingBarEmpty), context);
-    precacheImage(const AssetImage(AssetPaths.loadingBarAlmostFull), context);
-    precacheImage(const AssetImage(AssetPaths.loadingBarFull), context);
   }
 
   Future<void> _kickoff() async {
@@ -402,7 +399,15 @@ class _BootScreenState extends State<BootScreen>
   }
 
   void _setStage(_ProgressStage s) {
-    if (mounted) setState(() => _stage = s);
+    if (!mounted) return;
+    setState(() => _stage = s);
+    final target = switch (s) {
+      _ProgressStage.start => 0.15,
+      _ProgressStage.midway => 0.55,
+      _ProgressStage.filled => 1.0,
+    };
+    _barCtrl.animateTo(target,
+        duration: const Duration(milliseconds: 900), curve: Curves.easeInOut);
   }
 
   Future<void> _goWebContent(String url) async {
@@ -478,7 +483,9 @@ class _BootScreenState extends State<BootScreen>
 
   @override
   void dispose() {
-    _shimmer.dispose();
+    _barCtrl.dispose();
+    _glowCtrl.dispose();
+    _dotsCtrl.dispose();
     widget.push.onTokenRotate = null;
     super.dispose();
   }
@@ -551,18 +558,60 @@ class _BootScreenState extends State<BootScreen>
               ),
             ),
             SizedBox(height: landscape ? 4 : 12),
+            _buildAnimatedLoadingText(loadingSize),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedLoadingText(double fontSize) {
+    return AnimatedBuilder(
+      animation: _dotsCtrl,
+      builder: (context, _) {
+        final phase = (_dotsCtrl.value * 4).floor() % 4;
+        final dots = '.' * phase;
+        final hidden = '.' * (3 - phase);
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
             Text(
               'LOADING',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.86),
-                fontSize: loadingSize,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w800,
                 letterSpacing: 4,
               ),
             ),
+            SizedBox(
+              width: fontSize * 2,
+              child: Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                    text: dots,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.86),
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                  TextSpan(
+                    text: hidden,
+                    style: TextStyle(
+                      color: Colors.transparent,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 4,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
           ],
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -571,61 +620,138 @@ class _BootScreenState extends State<BootScreen>
     required MediaQueryData media,
   }) {
     final bottom = media.padding.bottom + (landscape ? 14.0 : 32.0);
-    final width = landscape
-        ? (media.size.width * 0.22).clamp(140.0, 220.0)
-        : (media.size.width * 0.6).clamp(180.0, 280.0);
+    final barWidth = landscape
+        ? (media.size.width * 0.25).clamp(160.0, 260.0)
+        : (media.size.width * 0.6).clamp(200.0, 300.0);
+    const barHeight = 14.0;
+    const radius = 7.0;
 
-    // Stack all three frames on top of each other and cross-fade by
-    // opacity. AnimatedSwitcher used to recreate Image widgets between
-    // stages, which produced a one-frame "blank" flash because each
-    // asset was re-decoded. Now each frame keeps its element identity,
-    // so the transition is buttery smooth.
-    final stageIndex = _stage.index;
     return Positioned(
       left: 0,
       right: 0,
       bottom: bottom,
       child: Center(
-        child: SizedBox(
-          width: width,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              _barFrame(AssetPaths.loadingBarEmpty, width, opacity: 1.0),
-              _barFrame(
-                AssetPaths.loadingBarAlmostFull,
-                width,
-                opacity: stageIndex >= 1 ? 1.0 : 0.0,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([_barCtrl, _glowCtrl]),
+          builder: (context, _) {
+            final progress = _barCtrl.value;
+            final glowPulse = 0.4 + 0.6 * _glowCtrl.value;
+
+            return SizedBox(
+              width: barWidth + 8,
+              height: barHeight + 8,
+              child: CustomPaint(
+                painter: _NeonBarPainter(
+                  progress: progress,
+                  glowIntensity: glowPulse,
+                  barWidth: barWidth,
+                  barHeight: barHeight,
+                  radius: radius,
+                ),
               ),
-              _barFrame(
-                AssetPaths.loadingBarFull,
-                width,
-                opacity: stageIndex >= 2 ? 1.0 : 0.0,
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
+  }
+}
+
+class _NeonBarPainter extends CustomPainter {
+  final double progress;
+  final double glowIntensity;
+  final double barWidth;
+  final double barHeight;
+  final double radius;
+
+  _NeonBarPainter({
+    required this.progress,
+    required this.glowIntensity,
+    required this.barWidth,
+    required this.barHeight,
+    required this.radius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dx = (size.width - barWidth) / 2;
+    final dy = (size.height - barHeight) / 2;
+    final trackRect =
+        RRect.fromRectAndRadius(Rect.fromLTWH(dx, dy, barWidth, barHeight), Radius.circular(radius));
+    final fillWidth = barWidth * progress.clamp(0.0, 1.0);
+
+    // Track background
+    canvas.drawRRect(
+      trackRect,
+      Paint()
+        ..color = const Color(0xFF1A1A3E)
+        ..style = PaintingStyle.fill,
+    );
+
+    // Track border
+    canvas.drawRRect(
+      trackRect,
+      Paint()
+        ..color = const Color(0xFF00E5FF).withValues(alpha: 0.35)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    if (fillWidth > 0) {
+      final fillRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(dx, dy, fillWidth, barHeight),
+        Radius.circular(radius),
+      );
+
+      // Glow behind fill
+      canvas.drawRRect(
+        fillRect.inflate(4 * glowIntensity),
+        Paint()
+          ..color = const Color(0xFF00E5FF).withValues(alpha: 0.25 * glowIntensity)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+      );
+
+      // Gradient fill
+      final gradient = LinearGradient(
+        colors: const [Color(0xFF00BCD4), Color(0xFF00E5FF), Color(0xFF76FF03)],
+        stops: const [0.0, 0.6, 1.0],
+      );
+      canvas.drawRRect(
+        fillRect,
+        Paint()
+          ..shader = gradient.createShader(
+              Rect.fromLTWH(dx, dy, barWidth, barHeight))
+          ..style = PaintingStyle.fill,
+      );
+
+      // Bright leading edge
+      if (fillWidth > 3) {
+        final edgeRect = RRect.fromRectAndRadius(
+          Rect.fromLTWH(dx + fillWidth - 4, dy + 1, 4, barHeight - 2),
+          const Radius.circular(2),
+        );
+        canvas.drawRRect(
+          edgeRect,
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.7 * glowIntensity)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+        );
+      }
+
+      // Shine highlight on top half
+      final shineRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(dx + 2, dy + 1, fillWidth - 4, barHeight * 0.4),
+        Radius.circular(radius),
+      );
+      canvas.drawRRect(
+        shineRect,
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.15),
+      );
+    }
   }
 
-  Widget _barFrame(String asset, double width, {required double opacity}) {
-    return AnimatedOpacity(
-      opacity: opacity,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeInOut,
-      child: FadeTransition(
-        opacity: _shimmerOpacity,
-        child: Image.asset(
-          asset,
-          width: width,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-          gaplessPlayback: true,
-          errorBuilder: (context, error, stackTrace) =>
-              const SizedBox(height: 30),
-        ),
-      ),
-    );
-  }
+  @override
+  bool shouldRepaint(_NeonBarPainter old) =>
+      progress != old.progress || glowIntensity != old.glowIntensity;
 }
