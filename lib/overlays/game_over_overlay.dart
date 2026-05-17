@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../game/gravity_rush_game.dart';
+import '../game/bounce_game.dart';
 
 class GameOverOverlay extends StatelessWidget {
-  final GravityRushGame game;
+  final BounceGame game;
   final VoidCallback onMainMenu;
 
   const GameOverOverlay({
@@ -15,7 +15,7 @@ class GameOverOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final reason = game.endReason ?? GameEndReason.died;
     final amount = game.lastAmount;
-    final balance = game.scoreManager.balance;
+    final balance = game.scoreTracker.balance;
 
     String title;
     Color titleColor;

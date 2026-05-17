@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../game/gravity_rush_game.dart';
+import '../game/bounce_game.dart';
 
 class PauseOverlay extends StatelessWidget {
-  final GravityRushGame game;
+  final BounceGame game;
   final VoidCallback onMainMenu;
 
   const PauseOverlay({

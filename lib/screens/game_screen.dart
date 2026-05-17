@@ -1,12 +1,12 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../game/gravity_rush_game.dart';
-import '../models/skin_data.dart';
+import '../game/bounce_game.dart';
+import '../models/ball_skin.dart';
 import '../overlays/game_over_overlay.dart';
 import '../overlays/pause_overlay.dart';
 
 class GameScreen extends StatefulWidget {
-  final SkinData skin;
+  final BallSkin skin;
   final VoidCallback onMainMenu;
 
   const GameScreen({
@@ -20,12 +20,12 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen> {
-  late GravityRushGame _game;
+  late BounceGame _game;
 
   @override
   void initState() {
     super.initState();
-    _game = GravityRushGame(skin: widget.skin);
+    _game = BounceGame(skin: widget.skin);
   }
 
   void _goToMainMenu() {
@@ -44,11 +44,11 @@ class _GameScreenState extends State<GameScreen> {
             game: _game,
             overlayBuilderMap: {
               'Pause': (context, game) => PauseOverlay(
-                    game: game as GravityRushGame,
+                    game: game as BounceGame,
                     onMainMenu: _goToMainMenu,
                   ),
               'GameOver': (context, game) => GameOverOverlay(
-                    game: game as GravityRushGame,
+                    game: game as BounceGame,
                     onMainMenu: _goToMainMenu,
                   ),
             },
@@ -99,7 +99,7 @@ class _GameScreenState extends State<GameScreen> {
                         ],
                       ),
                       child: Text(
-                        'COLLECT  ${_game.scoreManager.pendingCoins}',
+                        'COLLECT  ${_game.scoreTracker.pendingCoins}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,

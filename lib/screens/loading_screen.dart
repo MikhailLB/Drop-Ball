@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../utils/asset_paths.dart';
+import '../utils/media_paths.dart';
 
 class LoadingScreen extends StatefulWidget {
   final VoidCallback onLoadingComplete;
@@ -16,9 +16,9 @@ class _LoadingScreenState extends State<LoadingScreen> {
   bool _started = false;
 
   static const _barAssets = [
-    AssetPaths.loadingBarEmpty,
-    AssetPaths.loadingBarAlmostFull,
-    AssetPaths.loadingBarFull,
+    MediaPaths.loadingBarEmpty,
+    MediaPaths.loadingBarAlmostFull,
+    MediaPaths.loadingBarFull,
   ];
 
   @override
@@ -44,7 +44,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
   }
 
   Future<void> _runLoadingSequence() async {
-    final gameImages = AssetPaths.allImages;
+    final gameImages = MediaPaths.allImages;
     final total = gameImages.length;
     int loaded = 0;
 
@@ -102,7 +102,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Image.asset(
-                  AssetPaths.logo,
+                  MediaPaths.logo,
                   width: 150,
                   height: 150,
                   fit: BoxFit.contain,
@@ -111,7 +111,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 ),
                 const SizedBox(height: 18),
                 const Text(
-                  'GRAVITY RUSH',
+                  'BOUNCEBALL 2',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.cyanAccent,

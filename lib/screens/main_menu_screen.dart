@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/skin_data.dart';
-import '../utils/asset_paths.dart';
-import 'in_app_web_page.dart';
+import '../models/ball_skin.dart';
+import '../utils/media_paths.dart';
+import 'web_page.dart';
 import 'profile_screen.dart';
 
 class MainMenuScreen extends StatefulWidget {
-  final void Function(SkinData skin) onPlay;
+  final void Function(BallSkin skin) onPlay;
 
   const MainMenuScreen({super.key, required this.onPlay});
 
@@ -46,10 +46,10 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       final raw = prefs.getString('unlocked_skins') ?? 'blue';
       _unlockedSkins = raw.split(',').toSet();
       final savedSkin = prefs.getString('selected_skin') ?? 'blue';
-      _selectedSkinIndex = SkinData.allSkins
+      _selectedSkinIndex = BallSkin.allSkins
           .indexWhere((s) => s.id == savedSkin)
-          .clamp(0, SkinData.allSkins.length - 1);
-      if (!_unlockedSkins.contains(SkinData.allSkins[_selectedSkinIndex].id)) {
+          .clamp(0, BallSkin.allSkins.length - 1);
+      if (!_unlockedSkins.contains(BallSkin.allSkins[_selectedSkinIndex].id)) {
         _selectedSkinIndex = 0;
       }
       _avatarPath =
@@ -70,7 +70,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     await prefs.setString('selected_skin', skinId);
   }
 
-  Future<void> _buySkin(SkinData skin) async {
+  Future<void> _buySkin(BallSkin skin) async {
     if (_balance < skin.price) return;
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -82,7 +82,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
   }
 
   void _onSkinTap(int index) {
-    final skin = SkinData.allSkins[index];
+    final skin = BallSkin.allSkins[index];
     final isUnlocked = _unlockedSkins.contains(skin.id);
 
     if (isUnlocked) {
@@ -94,7 +94,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Need ${SkinData.formatPrice(skin.price)} coins',
+            'Need ${BallSkin.formatPrice(skin.price)} coins',
             style: const TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.red.withValues(alpha: 0.8),
@@ -104,7 +104,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     }
   }
 
-  void _showBuyDialog(SkinData skin, int index) {
+  void _showBuyDialog(BallSkin skin, int index) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -115,8 +115,8 @@ class _MainMenuScreenState extends State<MainMenuScreen>
           style: TextStyle(color: skin.primaryColor, letterSpacing: 2),
         ),
         content: Text(
-          'Cost: ${SkinData.formatPrice(skin.price)} coins\n'
-          'Balance: ${SkinData.formatPrice(_balance)}',
+          'Cost: ${BallSkin.formatPrice(skin.price)} coins\n'
+          'Balance: ${BallSkin.formatPrice(_balance)}',
           style: const TextStyle(color: Colors.white70, fontSize: 16),
         ),
         actions: [
@@ -151,7 +151,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   @override
   Widget build(BuildContext context) {
-    final selectedSkin = SkinData.allSkins[_selectedSkinIndex];
+    final selectedSkin = BallSkin.allSkins[_selectedSkinIndex];
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A1A),
       body: SafeArea(
@@ -166,10 +166,10 @@ class _MainMenuScreenState extends State<MainMenuScreen>
               ),
             ),
             const SizedBox(height: 6),
-            Image.asset(AssetPaths.logo, width: 120, height: 120),
+            Image.asset(MediaPaths.logo, width: 120, height: 120),
             const SizedBox(height: 8),
             const Text(
-              'GRAVITY RUSH',
+              'BOUNCEBALL 2',
               style: TextStyle(
                 color: Colors.cyanAccent,
                 fontSize: 30,
@@ -180,7 +180,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'BALANCE: ${SkinData.formatPrice(_balance)}',
+              'BALANCE: ${BallSkin.formatPrice(_balance)}',
               style: TextStyle(
                 color: Colors.greenAccent.withValues(alpha: 0.7),
                 fontSize: 18,
@@ -230,7 +230,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     return GestureDetector(
       onTap: () => Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => InAppWebPage(title: label, url: url),
+          builder: (_) => WebPage(title: label, url: url),
         ),
       ),
       child: Text(
@@ -299,15 +299,15 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     );
   }
 
-  Widget _buildSkinSelector(SkinData selected) {
+  Widget _buildSkinSelector(BallSkin selected) {
     return SizedBox(
       height: 150,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: SkinData.allSkins.length,
+        itemCount: BallSkin.allSkins.length,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemBuilder: (context, index) {
-          final skin = SkinData.allSkins[index];
+          final skin = BallSkin.allSkins[index];
           final isSelected = index == _selectedSkinIndex;
           final isUnlocked = _unlockedSkins.contains(skin.id);
           final canAfford = _balance >= skin.price;
@@ -384,7 +384,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                     )
                   else
                     Text(
-                      SkinData.formatPrice(skin.price),
+                      BallSkin.formatPrice(skin.price),
                       style: TextStyle(
                         color: canAfford
                             ? Colors.greenAccent.withValues(alpha: 0.8)
@@ -402,7 +402,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     );
   }
 
-  Widget _buildPlayButton(SkinData skin) {
+  Widget _buildPlayButton(BallSkin skin) {
     return SizedBox(
       width: 200,
       height: 60,
