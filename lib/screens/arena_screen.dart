@@ -1,36 +1,36 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../game/gravity_rush_game.dart';
-import '../models/skin_data.dart';
-import '../overlays/game_over_overlay.dart';
-import '../overlays/pause_overlay.dart';
+import '../game/drop_game.dart';
+import '../models/ball_skin.dart';
+import '../overlays/paused_view.dart';
+import '../overlays/round_end_view.dart';
 
-class GameScreen extends StatefulWidget {
-  final SkinData skin;
+class ArenaScreen extends StatefulWidget {
+  final BallSkin skin;
   final VoidCallback onMainMenu;
 
-  const GameScreen({
+  const ArenaScreen({
     super.key,
     required this.skin,
     required this.onMainMenu,
   });
 
   @override
-  State<GameScreen> createState() => _GameScreenState();
+  State<ArenaScreen> createState() => _ArenaScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
-  late GravityRushGame _game;
+class _ArenaScreenState extends State<ArenaScreen> {
+  late NeonDropGame _game;
 
   @override
   void initState() {
     super.initState();
-    _game = GravityRushGame(skin: widget.skin);
+    _game = NeonDropGame(skin: widget.skin);
   }
 
-  void _goToMainMenu() {
-    _game.overlays.remove('Pause');
-    _game.overlays.remove('GameOver');
+  void _goToLobby() {
+    _game.overlays.remove('Halted');
+    _game.overlays.remove('RoundEnd');
     if (_game.paused) _game.resumeEngine();
     widget.onMainMenu();
   }
@@ -43,17 +43,16 @@ class _GameScreenState extends State<GameScreen> {
           GameWidget(
             game: _game,
             overlayBuilderMap: {
-              'Pause': (context, game) => PauseOverlay(
-                    game: game as GravityRushGame,
-                    onMainMenu: _goToMainMenu,
+              'Halted': (context, game) => PausedView(
+                    game: game as NeonDropGame,
+                    onMainMenu: _goToLobby,
                   ),
-              'GameOver': (context, game) => GameOverOverlay(
-                    game: game as GravityRushGame,
-                    onMainMenu: _goToMainMenu,
+              'RoundEnd': (context, game) => RoundEndView(
+                    game: game as NeonDropGame,
+                    onMainMenu: _goToLobby,
                   ),
             },
           ),
-          // Pause button
           Positioned(
             top: 40,
             right: 16,
@@ -71,7 +70,6 @@ class _GameScreenState extends State<GameScreen> {
               ),
             ),
           ),
-          // COLLECT button
           Positioned(
             bottom: 10,
             left: 0,
@@ -89,8 +87,7 @@ class _GameScreenState extends State<GameScreen> {
                       decoration: BoxDecoration(
                         color: const Color(0xCC00AA44),
                         borderRadius: BorderRadius.circular(14),
-                        border:
-                            Border.all(color: Colors.greenAccent, width: 2),
+                        border: Border.all(color: Colors.greenAccent, width: 2),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.greenAccent.withValues(alpha: 0.4),
@@ -99,7 +96,7 @@ class _GameScreenState extends State<GameScreen> {
                         ],
                       ),
                       child: Text(
-                        'COLLECT  ${_game.scoreManager.pendingCoins}',
+                        'COLLECT  ${_game.wallet.pending}',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 16,

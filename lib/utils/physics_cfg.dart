@@ -1,5 +1,5 @@
-class GameConstants {
-  GameConstants._();
+class PhysicsCfg {
+  PhysicsCfg._();
 
   static const double ballRadius = 12.0;
   static const double pegRadius = 7.0;

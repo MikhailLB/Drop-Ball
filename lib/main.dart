@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app.dart';
+import 'root_widget.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const GravityRushApp());
+  runApp(const BallDropApp());
 }

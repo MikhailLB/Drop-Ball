@@ -1,5 +1,5 @@
-class AssetPaths {
-  AssetPaths._();
+class MediaLib {
+  MediaLib._();
 
   // Skins
   static const String blueSphere = 'assets/game_assets/blue_sphere_asset.webp';
@@ -36,14 +36,7 @@ class AssetPaths {
   static const String loadingHorizontal = 'assets/loading_screen/loading_horizontal.mp4';
 
   // Logo
-  static const String logo = 'assets/logo_options/logo.webp';
-
-  // No WiFi
-  static const String noWifi = 'assets/NO WIFI/no_wifi_screen.webp';
-
-  // Ad screens
-  static const String bonus = 'assets/add_screens/bonus.webp';
-  static const String skip = 'assets/add_screens/skip.webp';
+  static const String logo = 'assets/logo_options/logo.jpg';
 
   static const List<String> allImages = [
     blueSphere, greenSphere, yellowSphere, redSphere, purpleSphere,
@@ -52,6 +45,6 @@ class AssetPaths {
     blueSpike, redSpike,
     background,
     loadingBarStart, loadingBarHalf, loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
-    logo, noWifi, bonus, skip,
+    logo,
   ];
 }

@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import '../utils/asset_paths.dart';
+import '../utils/media_lib.dart';
 
-class LoadingScreen extends StatefulWidget {
-  final VoidCallback onLoadingComplete;
+class PreloadScreen extends StatefulWidget {
+  final VoidCallback onReady;
 
-  const LoadingScreen({super.key, required this.onLoadingComplete});
+  const PreloadScreen({super.key, required this.onReady});
 
   @override
-  State<LoadingScreen> createState() => _LoadingScreenState();
+  State<PreloadScreen> createState() => _PreloadScreenState();
 }
 
-class _LoadingScreenState extends State<LoadingScreen> {
-  VideoPlayerController? _videoController;
+class _PreloadScreenState extends State<PreloadScreen> {
+  VideoPlayerController? _videoCtrl;
   int _barState = 0;
   bool _videoReady = false;
   bool _showBar = false;
   bool _started = false;
 
-  static const _barAssets = [
-    AssetPaths.loadingBarStart,
-    AssetPaths.loadingBarHalf,
-    AssetPaths.loadingBarAlmostFull,
-    AssetPaths.loadingBarFull,
+  static const _barFrames = [
+    MediaLib.loadingBarStart,
+    MediaLib.loadingBarHalf,
+    MediaLib.loadingBarAlmostFull,
+    MediaLib.loadingBarFull,
   ];
 
   @override
@@ -30,58 +30,53 @@ class _LoadingScreenState extends State<LoadingScreen> {
     super.didChangeDependencies();
     if (!_started) {
       _started = true;
-      _start();
+      _boot();
     }
   }
 
-  Future<void> _start() async {
-    // 1. Init and start video first
+  Future<void> _boot() async {
     await _initVideo();
 
-    // 2. Precache loading bar images
-    for (final path in _barAssets) {
+    for (final path in _barFrames) {
       if (!mounted) return;
       await precacheImage(AssetImage(path), context);
     }
     if (!mounted) return;
     setState(() => _showBar = true);
 
-    // 3. Load game assets with bar progress
-    await _runLoadingSequence();
+    await _preloadAssets();
   }
 
   Future<void> _initVideo() async {
     if (!mounted) return;
     final size = MediaQuery.of(context).size;
-    final isLandscape = size.width > size.height;
+    final asset = size.width > size.height
+        ? MediaLib.loadingHorizontal
+        : MediaLib.loadingVertical;
 
-    final videoAsset = isLandscape
-        ? AssetPaths.loadingHorizontal
-        : AssetPaths.loadingVertical;
-
-    _videoController = VideoPlayerController.asset(videoAsset);
+    _videoCtrl = VideoPlayerController.asset(asset);
     try {
-      await _videoController!.initialize();
-      _videoController!.setLooping(true);
-      _videoController!.play();
+      await _videoCtrl!.initialize();
+      _videoCtrl!.setLooping(true);
+      _videoCtrl!.play();
       if (mounted) setState(() => _videoReady = true);
     } catch (_) {}
   }
 
-  Future<void> _runLoadingSequence() async {
-    final gameImages = AssetPaths.allImages;
-    final total = gameImages.length;
-    int loaded = 0;
+  Future<void> _preloadAssets() async {
+    final images = MediaLib.allImages;
+    final total = images.length;
+    int done = 0;
 
-    for (final path in gameImages) {
+    for (final path in images) {
       if (!mounted) return;
       try {
         await precacheImage(AssetImage(path), context);
       } catch (_) {}
-      loaded++;
+      done++;
 
-      final progress = loaded / total;
-      final newState = progress < 0.25
+      final progress = done / total;
+      final next = progress < 0.25
           ? 0
           : progress < 0.55
               ? 1
@@ -89,21 +84,21 @@ class _LoadingScreenState extends State<LoadingScreen> {
                   ? 2
                   : 3;
 
-      if (newState != _barState && mounted) {
-        setState(() => _barState = newState);
+      if (next != _barState && mounted) {
+        setState(() => _barState = next);
       }
     }
 
     if (mounted) {
       setState(() => _barState = 3);
       await Future.delayed(const Duration(milliseconds: 600));
-      if (mounted) widget.onLoadingComplete();
+      if (mounted) widget.onReady();
     }
   }
 
   @override
   void dispose() {
-    _videoController?.dispose();
+    _videoCtrl?.dispose();
     super.dispose();
   }
 
@@ -114,13 +109,13 @@ class _LoadingScreenState extends State<LoadingScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          if (_videoReady && _videoController != null)
+          if (_videoReady && _videoCtrl != null)
             FittedBox(
               fit: BoxFit.cover,
               child: SizedBox(
-                width: _videoController!.value.size.width,
-                height: _videoController!.value.size.height,
-                child: VideoPlayer(_videoController!),
+                width: _videoCtrl!.value.size.width,
+                height: _videoCtrl!.value.size.height,
+                child: VideoPlayer(_videoCtrl!),
               ),
             ),
           if (_showBar)
@@ -132,7 +127,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 400),
                   child: Image.asset(
-                    _barAssets[_barState],
+                    _barFrames[_barState],
                     key: ValueKey(_barState),
                     width: 250,
                     fit: BoxFit.contain,

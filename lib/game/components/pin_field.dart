@@ -3,11 +3,10 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart' show TextStyle, FontWeight;
-import '../../utils/constants.dart';
-import '../gravity_rush_game.dart';
+import '../../utils/physics_cfg.dart';
+import '../drop_game.dart';
 
-class PegBoard extends PositionComponent
-    with HasGameReference<GravityRushGame> {
+class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
   final List<Vector2> pegs = [];
   final List<Vector2> _basePegs = [];
   final List<bool> _isGold = [];
@@ -16,7 +15,6 @@ class PegBoard extends PositionComponent
   double _moveAmplitude = 0;
   double _time = 0;
 
-  /// Slot multipliers. 0 means skull.
   List<double> slotMultipliers = [];
 
   double _slotWidth = 0;
@@ -38,7 +36,7 @@ class PegBoard extends PositionComponent
 
   bool get allWhitePegsHit => hitWhitePegs >= totalWhitePegs;
 
-  late final Sprite _circleSkull;
+  late final Sprite _skullIcon;
 
   final Paint _pegPaint = Paint()..color = const Color(0xFFDDDDEE);
   final Paint _pegGlowPaint = Paint()
@@ -69,10 +67,10 @@ class PegBoard extends PositionComponent
   Future<void> onLoad() async {
     size = game.size;
     priority = 0;
-    _circleSkull = game.spriteCache.circleSkull;
+    _skullIcon = game.spriteAssets.circleSkull;
     _buildLayout();
     _assignPegTypes();
-    generateSlots();
+    buildSlots();
   }
 
   void _buildLayout() {
@@ -84,32 +82,32 @@ class PegBoard extends PositionComponent
 
     final w = size.x;
     final h = size.y;
-    final topY = h * GameConstants.boardTopFraction;
-    final botY = h * GameConstants.boardBottomFraction;
+    final topY = h * PhysicsCfg.boardTopFraction;
+    final botY = h * PhysicsCfg.boardBottomFraction;
     final boardH = botY - topY;
-    final margin = w * GameConstants.boardMarginFraction;
+    final margin = w * PhysicsCfg.boardMarginFraction;
     final usableW = w - 2 * margin;
 
-    _actualPegRadius = GameConstants.pegRadius;
-    final colSpacing = usableW / (GameConstants.pegColsWide - 1);
-    final rowSpacing = boardH / (GameConstants.pegRows + 1);
+    _actualPegRadius = PhysicsCfg.pegRadius;
+    final colSpacing = usableW / (PhysicsCfg.pegColsWide - 1);
+    final rowSpacing = boardH / (PhysicsCfg.pegRows + 1);
 
-    for (int row = 0; row < GameConstants.pegRows; row++) {
+    for (int row = 0; row < PhysicsCfg.pegRows; row++) {
       final y = topY + (row + 1) * rowSpacing;
       if (row.isEven) {
-        for (int col = 0; col < GameConstants.pegColsWide; col++) {
+        for (int col = 0; col < PhysicsCfg.pegColsWide; col++) {
           _addPeg(Vector2(margin + col * colSpacing, y));
         }
       } else {
-        for (int col = 0; col < GameConstants.pegColsNarrow; col++) {
+        for (int col = 0; col < PhysicsCfg.pegColsNarrow; col++) {
           _addPeg(Vector2(margin + colSpacing / 2 + col * colSpacing, y));
         }
       }
     }
 
     _slotsY = botY + 10;
-    _slotsBottom = _slotsY + h * GameConstants.slotHeightFraction;
-    _slotWidth = w / GameConstants.numSlots;
+    _slotsBottom = _slotsY + h * PhysicsCfg.slotHeightFraction;
+    _slotWidth = w / PhysicsCfg.numSlots;
   }
 
   void _addPeg(Vector2 pos) {
@@ -120,16 +118,14 @@ class PegBoard extends PositionComponent
     _isMoving.add(false);
   }
 
-  /// Called once at game start to assign gold vs white pegs.
   void _assignPegTypes() {
     final rng = Random();
     for (int i = 0; i < pegs.length; i++) {
-      _isGold[i] = rng.nextDouble() < GameConstants.goldPegChance;
+      _isGold[i] = rng.nextDouble() < PhysicsCfg.goldPegChance;
       _isHit[i] = false;
     }
   }
 
-  /// Called before each drop to set moving pegs for current difficulty.
   void prepareForDrop({
     required double moveChance,
     required double moveAmplitude,
@@ -138,26 +134,23 @@ class PegBoard extends PositionComponent
     _moveAmplitude = moveAmplitude;
     for (int i = 0; i < pegs.length; i++) {
       _isMoving[i] = rng.nextDouble() < moveChance;
-      if (!_isMoving[i]) {
-        pegs[i].setFrom(_basePegs[i]);
-      }
+      if (!_isMoving[i]) pegs[i].setFrom(_basePegs[i]);
     }
   }
 
-  /// Returns gold bonus points if gold peg hit for first time, else 0.
   int onPegHit(int index) {
     if (index < 0 || index >= pegs.length || _isHit[index]) return 0;
     _isHit[index] = true;
-    return _isGold[index] ? GameConstants.goldPegBonus : 0;
+    return _isGold[index] ? PhysicsCfg.goldPegBonus : 0;
   }
 
-  void generateSlots() {
-    final dm = game.difficultyManager;
-    slotMultipliers = dm.generateMultipliers();
+  void buildSlots() {
+    final rs = game.roundScaler;
+    slotMultipliers = rs.buildMultipliers();
     final rng = Random();
     int placed = 0;
-    while (placed < dm.skullCount && placed < GameConstants.numSlots - 1) {
-      final idx = rng.nextInt(GameConstants.numSlots);
+    while (placed < rs.skullCount && placed < PhysicsCfg.numSlots - 1) {
+      final idx = rng.nextInt(PhysicsCfg.numSlots);
       if (slotMultipliers[idx] > 0) {
         slotMultipliers[idx] = 0;
         placed++;
@@ -169,7 +162,7 @@ class PegBoard extends PositionComponent
   double getMultiplier(int index) => slotMultipliers[index];
 
   int getSlotIndex(double x) {
-    return (x / _slotWidth).floor().clamp(0, GameConstants.numSlots - 1);
+    return (x / _slotWidth).floor().clamp(0, PhysicsCfg.numSlots - 1);
   }
 
   @override
@@ -178,15 +171,13 @@ class PegBoard extends PositionComponent
     _time += dt;
     for (int i = 0; i < pegs.length; i++) {
       if (_isMoving[i]) {
-        pegs[i].x =
-            _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
+        pegs[i].x = _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
       }
     }
   }
 
   @override
   void render(Canvas canvas) {
-    // --- Pegs ---
     for (int i = 0; i < pegs.length; i++) {
       final offset = Offset(pegs[i].x, pegs[i].y);
 
@@ -202,13 +193,11 @@ class PegBoard extends PositionComponent
       }
     }
 
-    // --- Slots ---
     final iconSize = _slotWidth * 0.50;
 
     for (int i = 0; i < slotMultipliers.length; i++) {
       final x = i * _slotWidth;
-      final rect = Rect.fromLTWH(
-          x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
+      final rect = Rect.fromLTWH(x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
       final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
       final cx = x + _slotWidth / 2;
       final cy = _slotsY + (_slotsBottom - _slotsY) / 2;
@@ -219,7 +208,7 @@ class PegBoard extends PositionComponent
         _slotBorderPaint.color = const Color(0x66FF0000);
         canvas.drawRRect(rrect, _slotFillPaint);
         canvas.drawRRect(rrect, _slotBorderPaint);
-        _circleSkull.render(
+        _skullIcon.render(
           canvas,
           position: Vector2(cx - iconSize / 2, cy - iconSize / 2),
           size: Vector2.all(iconSize),

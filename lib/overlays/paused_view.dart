@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import '../game/gravity_rush_game.dart';
+import '../game/drop_game.dart';
 
-class PauseOverlay extends StatelessWidget {
-  final GravityRushGame game;
+class PausedView extends StatelessWidget {
+  final NeonDropGame game;
   final VoidCallback onMainMenu;
 
-  const PauseOverlay({
+  const PausedView({
     super.key,
     required this.game,
     required this.onMainMenu,
@@ -26,24 +26,20 @@ class PauseOverlay extends StatelessWidget {
                 fontSize: 48,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 4,
-                shadows: [
-                  Shadow(color: Colors.cyanAccent, blurRadius: 20),
-                ],
+                shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)],
               ),
             ),
             const SizedBox(height: 40),
-            _buildButton('RESUME', Colors.cyanAccent, () {
-              game.togglePause();
-            }),
+            _btn('RESUME', Colors.cyanAccent, () => game.togglePause()),
             const SizedBox(height: 16),
-            _buildButton('MAIN MENU', Colors.orangeAccent, onMainMenu),
+            _btn('MAIN MENU', Colors.orangeAccent, onMainMenu),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildButton(String label, Color color, VoidCallback onPressed) {
+  Widget _btn(String label, Color color, VoidCallback onPressed) {
     return SizedBox(
       width: 220,
       height: 56,
@@ -53,9 +49,7 @@ class PauseOverlay extends StatelessWidget {
           backgroundColor: Colors.transparent,
           foregroundColor: color,
           side: BorderSide(color: color, width: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           elevation: 0,
         ),
         child: Text(

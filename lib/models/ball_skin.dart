@@ -1,12 +1,12 @@
 import 'dart:ui';
-import '../utils/asset_paths.dart';
+import '../utils/media_lib.dart';
 
-enum SkinTier { basic, common, rare, epic, legendary }
+enum SkinRarity { basic, common, rare, epic, legendary }
 
-class SkinData {
+class BallSkin {
   final String id;
   final String name;
-  final SkinTier tier;
+  final SkinRarity rarity;
   final String assetPath;
   final Color primaryColor;
   final Color secondaryColor;
@@ -16,10 +16,10 @@ class SkinData {
   final double glowRadius;
   final int price;
 
-  const SkinData({
+  const BallSkin({
     required this.id,
     required this.name,
-    required this.tier,
+    required this.rarity,
     required this.assetPath,
     required this.primaryColor,
     required this.secondaryColor,
@@ -30,12 +30,12 @@ class SkinData {
     this.price = 0,
   });
 
-  static const List<SkinData> allSkins = [
-    SkinData(
+  static const List<BallSkin> all = [
+    BallSkin(
       id: 'blue',
       name: 'Azure',
-      tier: SkinTier.basic,
-      assetPath: AssetPaths.blueSphere,
+      rarity: SkinRarity.basic,
+      assetPath: MediaLib.blueSphere,
       primaryColor: Color(0xFF4FC3F7),
       secondaryColor: Color(0xFF0288D1),
       particleDensity: 3,
@@ -44,11 +44,11 @@ class SkinData {
       glowRadius: 0,
       price: 0,
     ),
-    SkinData(
+    BallSkin(
       id: 'green',
       name: 'Emerald',
-      tier: SkinTier.common,
-      assetPath: AssetPaths.greenSphere,
+      rarity: SkinRarity.common,
+      assetPath: MediaLib.greenSphere,
       primaryColor: Color(0xFF66BB6A),
       secondaryColor: Color(0xFF2E7D32),
       particleDensity: 6,
@@ -57,11 +57,11 @@ class SkinData {
       glowRadius: 4,
       price: 1000000,
     ),
-    SkinData(
+    BallSkin(
       id: 'yellow',
       name: 'Solar',
-      tier: SkinTier.rare,
-      assetPath: AssetPaths.yellowSphere,
+      rarity: SkinRarity.rare,
+      assetPath: MediaLib.yellowSphere,
       primaryColor: Color(0xFFFFEE58),
       secondaryColor: Color(0xFFFFA000),
       particleDensity: 10,
@@ -70,11 +70,11 @@ class SkinData {
       glowRadius: 8,
       price: 5000000,
     ),
-    SkinData(
+    BallSkin(
       id: 'red',
       name: 'Inferno',
-      tier: SkinTier.epic,
-      assetPath: AssetPaths.redSphere,
+      rarity: SkinRarity.epic,
+      assetPath: MediaLib.redSphere,
       primaryColor: Color(0xFFEF5350),
       secondaryColor: Color(0xFFFF6D00),
       particleDensity: 15,
@@ -83,11 +83,11 @@ class SkinData {
       glowRadius: 12,
       price: 15000000,
     ),
-    SkinData(
+    BallSkin(
       id: 'purple',
       name: 'Nebula',
-      tier: SkinTier.legendary,
-      assetPath: AssetPaths.purpleSphere,
+      rarity: SkinRarity.legendary,
+      assetPath: MediaLib.purpleSphere,
       primaryColor: Color(0xFFAB47BC),
       secondaryColor: Color(0xFF7C4DFF),
       particleDensity: 22,
@@ -98,8 +98,8 @@ class SkinData {
     ),
   ];
 
-  static SkinData getById(String id) {
-    return allSkins.firstWhere((s) => s.id == id, orElse: () => allSkins[0]);
+  static BallSkin getById(String id) {
+    return all.firstWhere((s) => s.id == id, orElse: () => all[0]);
   }
 
   static String formatPrice(int price) {

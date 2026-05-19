@@ -1,85 +1,85 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../models/skin_data.dart';
-import '../utils/asset_paths.dart';
+import '../models/ball_skin.dart';
+import '../utils/media_lib.dart';
 
-class MainMenuScreen extends StatefulWidget {
-  final void Function(SkinData skin) onPlay;
+class LobbyScreen extends StatefulWidget {
+  final void Function(BallSkin skin) onPlay;
 
-  const MainMenuScreen({super.key, required this.onPlay});
+  const LobbyScreen({super.key, required this.onPlay});
 
   @override
-  State<MainMenuScreen> createState() => _MainMenuScreenState();
+  State<LobbyScreen> createState() => _LobbyScreenState();
 }
 
-class _MainMenuScreenState extends State<MainMenuScreen>
+class _LobbyScreenState extends State<LobbyScreen>
     with SingleTickerProviderStateMixin {
-  int _selectedSkinIndex = 0;
+  int _activeSkinIdx = 0;
   int _balance = 0;
-  Set<String> _unlockedSkins = {'blue'};
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+  Set<String> _owned = {'blue'};
+  late AnimationController _pulseCtrl;
+  late Animation<double> _pulse;
 
   @override
   void initState() {
     super.initState();
-    _loadPreferences();
-    _pulseController = AnimationController(
+    _loadPrefs();
+    _pulseCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _pulse = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
     );
   }
 
-  Future<void> _loadPreferences() async {
+  Future<void> _loadPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _balance = prefs.getInt('balance') ?? 0;
-      final raw = prefs.getString('unlocked_skins') ?? 'blue';
-      _unlockedSkins = raw.split(',').toSet();
-      final savedSkin = prefs.getString('selected_skin') ?? 'blue';
-      _selectedSkinIndex = SkinData.allSkins
-          .indexWhere((s) => s.id == savedSkin)
-          .clamp(0, SkinData.allSkins.length - 1);
-      if (!_unlockedSkins.contains(SkinData.allSkins[_selectedSkinIndex].id)) {
-        _selectedSkinIndex = 0;
+      _balance = prefs.getInt('bb2_wallet') ?? 0;
+      final raw = prefs.getString('bb2_owned') ?? 'blue';
+      _owned = raw.split(',').toSet();
+      final saved = prefs.getString('bb2_active') ?? 'blue';
+      _activeSkinIdx = BallSkin.all
+          .indexWhere((s) => s.id == saved)
+          .clamp(0, BallSkin.all.length - 1);
+      if (!_owned.contains(BallSkin.all[_activeSkinIdx].id)) {
+        _activeSkinIdx = 0;
       }
     });
   }
 
-  Future<void> _saveSkinSelection(String skinId) async {
+  Future<void> _saveActive(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('selected_skin', skinId);
+    await prefs.setString('bb2_active', id);
   }
 
-  Future<void> _buySkin(SkinData skin) async {
+  Future<void> _buySkin(BallSkin skin) async {
     if (_balance < skin.price) return;
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _balance -= skin.price;
-      _unlockedSkins.add(skin.id);
+      _owned.add(skin.id);
     });
-    await prefs.setInt('balance', _balance);
-    await prefs.setString('unlocked_skins', _unlockedSkins.join(','));
+    await prefs.setInt('bb2_wallet', _balance);
+    await prefs.setString('bb2_owned', _owned.join(','));
   }
 
   void _onSkinTap(int index) {
-    final skin = SkinData.allSkins[index];
-    final isUnlocked = _unlockedSkins.contains(skin.id);
+    final skin = BallSkin.all[index];
+    final isOwned = _owned.contains(skin.id);
 
-    if (isUnlocked) {
-      setState(() => _selectedSkinIndex = index);
-      _saveSkinSelection(skin.id);
+    if (isOwned) {
+      setState(() => _activeSkinIdx = index);
+      _saveActive(skin.id);
     } else if (_balance >= skin.price) {
       _showBuyDialog(skin, index);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Need ${SkinData.formatPrice(skin.price)} coins',
+            'Need ${BallSkin.formatPrice(skin.price)} coins',
             style: const TextStyle(color: Colors.white),
           ),
           backgroundColor: Colors.red.withValues(alpha: 0.8),
@@ -89,7 +89,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     }
   }
 
-  void _showBuyDialog(SkinData skin, int index) {
+  void _showBuyDialog(BallSkin skin, int index) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -100,22 +100,21 @@ class _MainMenuScreenState extends State<MainMenuScreen>
           style: TextStyle(color: skin.primaryColor, letterSpacing: 2),
         ),
         content: Text(
-          'Cost: ${SkinData.formatPrice(skin.price)} coins\n'
-          'Balance: ${SkinData.formatPrice(_balance)}',
+          'Cost: ${BallSkin.formatPrice(skin.price)} coins\n'
+          'Balance: ${BallSkin.formatPrice(_balance)}',
           style: const TextStyle(color: Colors.white70, fontSize: 16),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('CANCEL', style: TextStyle(color: Colors.white38)),
+            child: const Text('CANCEL', style: TextStyle(color: Colors.white38)),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
               await _buySkin(skin);
-              setState(() => _selectedSkinIndex = index);
-              _saveSkinSelection(skin.id);
+              setState(() => _activeSkinIdx = index);
+              _saveActive(skin.id);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: skin.primaryColor.withValues(alpha: 0.3),
@@ -130,23 +129,23 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   @override
   void dispose() {
-    _pulseController.dispose();
+    _pulseCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final selectedSkin = SkinData.allSkins[_selectedSkinIndex];
+    final activeSkin = BallSkin.all[_activeSkinIdx];
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A1A),
       body: SafeArea(
         child: Column(
           children: [
             const SizedBox(height: 30),
-            Image.asset(AssetPaths.logo, width: 140, height: 140),
+            Image.asset(MediaLib.logo, width: 140, height: 140),
             const SizedBox(height: 10),
             const Text(
-              'GRAVITY RUSH',
+              'BOUNCE BALL 2',
               style: TextStyle(
                 color: Colors.cyanAccent,
                 fontSize: 32,
@@ -157,7 +156,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'BALANCE: ${SkinData.formatPrice(_balance)}',
+              'BALANCE: ${BallSkin.formatPrice(_balance)}',
               style: TextStyle(
                 color: Colors.greenAccent.withValues(alpha: 0.7),
                 fontSize: 18,
@@ -175,15 +174,15 @@ class _MainMenuScreenState extends State<MainMenuScreen>
               ),
             ),
             const SizedBox(height: 10),
-            _buildSkinSelector(selectedSkin),
+            _buildSkinGrid(activeSkin),
             const Spacer(),
             AnimatedBuilder(
-              animation: _pulseAnimation,
+              animation: _pulse,
               builder: (context, child) => Transform.scale(
-                scale: _pulseAnimation.value,
+                scale: _pulse.value,
                 child: child,
               ),
-              child: _buildPlayButton(selectedSkin),
+              child: _buildPlayButton(activeSkin),
             ),
             const SizedBox(height: 24),
             Row(
@@ -192,8 +191,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                 _linkButton('Privacy Policy',
                     'https://gravittyrush.com/privacy-policy.html'),
                 const SizedBox(width: 20),
-                _linkButton(
-                    'Support', 'https://gravittyrush.com/support.html'),
+                _linkButton('Support', 'https://gravittyrush.com/support.html'),
               ],
             ),
             const SizedBox(height: 20),
@@ -205,8 +203,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   Widget _linkButton(String label, String url) {
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(url),
-          mode: LaunchMode.externalApplication),
+      onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
       child: Text(
         label,
         style: TextStyle(
@@ -219,17 +216,17 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     );
   }
 
-  Widget _buildSkinSelector(SkinData selected) {
+  Widget _buildSkinGrid(BallSkin selected) {
     return SizedBox(
       height: 150,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: SkinData.allSkins.length,
+        itemCount: BallSkin.all.length,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         itemBuilder: (context, index) {
-          final skin = SkinData.allSkins[index];
-          final isSelected = index == _selectedSkinIndex;
-          final isUnlocked = _unlockedSkins.contains(skin.id);
+          final skin = BallSkin.all[index];
+          final isSelected = index == _activeSkinIdx;
+          final isOwned = _owned.contains(skin.id);
           final canAfford = _balance >= skin.price;
 
           return GestureDetector(
@@ -243,7 +240,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                 border: Border.all(
                   color: isSelected
                       ? skin.primaryColor
-                      : isUnlocked
+                      : isOwned
                           ? Colors.white24
                           : Colors.white10,
                   width: isSelected ? 2 : 1,
@@ -267,11 +264,10 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                     alignment: Alignment.center,
                     children: [
                       Opacity(
-                        opacity: isUnlocked ? 1.0 : 0.3,
-                        child: Image.asset(skin.assetPath,
-                            width: 46, height: 46),
+                        opacity: isOwned ? 1.0 : 0.3,
+                        child: Image.asset(skin.assetPath, width: 46, height: 46),
                       ),
-                      if (!isUnlocked)
+                      if (!isOwned)
                         Icon(
                           Icons.lock,
                           color: Colors.white.withValues(alpha: 0.6),
@@ -283,7 +279,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                   Text(
                     skin.name,
                     style: TextStyle(
-                      color: isUnlocked
+                      color: isOwned
                           ? (isSelected ? skin.primaryColor : Colors.white60)
                           : Colors.white30,
                       fontSize: 11,
@@ -291,9 +287,9 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                     ),
                   ),
                   const SizedBox(height: 2),
-                  if (isUnlocked)
+                  if (isOwned)
                     Text(
-                      skin.tier.name.toUpperCase(),
+                      skin.rarity.name.toUpperCase(),
                       style: TextStyle(
                         color: isSelected
                             ? skin.primaryColor.withValues(alpha: 0.7)
@@ -304,7 +300,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
                     )
                   else
                     Text(
-                      SkinData.formatPrice(skin.price),
+                      BallSkin.formatPrice(skin.price),
                       style: TextStyle(
                         color: canAfford
                             ? Colors.greenAccent.withValues(alpha: 0.8)
@@ -322,7 +318,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
     );
   }
 
-  Widget _buildPlayButton(SkinData skin) {
+  Widget _buildPlayButton(BallSkin skin) {
     return SizedBox(
       width: 200,
       height: 60,
@@ -332,9 +328,7 @@ class _MainMenuScreenState extends State<MainMenuScreen>
           backgroundColor: skin.primaryColor.withValues(alpha: 0.2),
           foregroundColor: skin.primaryColor,
           side: BorderSide(color: skin.primaryColor, width: 2),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 0,
         ),
         child: Text(

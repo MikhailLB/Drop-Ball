@@ -1,9 +1,9 @@
 import 'dart:math';
 
 import 'package:flame/components.dart';
-import '../../utils/constants.dart';
+import '../../utils/physics_cfg.dart';
 
-class PlinkoBall extends SpriteComponent {
+class DropBall extends SpriteComponent {
   final Vector2 velocity = Vector2.zero();
   final List<Vector2> pegs;
   final double pegRadius;
@@ -15,7 +15,7 @@ class PlinkoBall extends SpriteComponent {
   final Random _rng = Random();
   double _driftTimer = 0;
 
-  PlinkoBall({
+  DropBall({
     required Sprite sprite,
     required Vector2 startPosition,
     required this.pegs,
@@ -27,14 +27,14 @@ class PlinkoBall extends SpriteComponent {
   }) : super(
           sprite: sprite,
           position: startPosition,
-          size: Vector2.all(GameConstants.ballRadius * 2),
+          size: Vector2.all(PhysicsCfg.ballRadius * 2),
           anchor: Anchor.center,
           priority: 10,
         );
 
   void applyNudge(double dx) {
     if (_landed) return;
-    velocity.x += dx * GameConstants.nudgeStrength;
+    velocity.x += dx * PhysicsCfg.nudgeStrength;
   }
 
   @override
@@ -42,38 +42,36 @@ class PlinkoBall extends SpriteComponent {
     super.update(dt);
     if (_landed) return;
 
-    // Random drift makes ball harder to control
     _driftTimer += dt;
-    if (_driftTimer >= GameConstants.driftInterval) {
+    if (_driftTimer >= PhysicsCfg.driftInterval) {
       _driftTimer = 0;
-      velocity.x +=
-          (_rng.nextDouble() - 0.5) * GameConstants.driftForce;
+      velocity.x += (_rng.nextDouble() - 0.5) * PhysicsCfg.driftForce;
     }
 
-    final subDt = dt / GameConstants.physicsSubsteps;
-    for (int s = 0; s < GameConstants.physicsSubsteps; s++) {
-      _physicsStep(subDt);
+    final subDt = dt / PhysicsCfg.physicsSubsteps;
+    for (int s = 0; s < PhysicsCfg.physicsSubsteps; s++) {
+      _step(subDt);
       if (_landed) return;
     }
   }
 
-  void _physicsStep(double dt) {
-    velocity.y += GameConstants.gravity * dt;
+  void _step(double dt) {
+    velocity.y += PhysicsCfg.gravity * dt;
 
-    if (velocity.length > GameConstants.maxVelocity) {
-      velocity.setFrom(velocity.normalized() * GameConstants.maxVelocity);
+    if (velocity.length > PhysicsCfg.maxVelocity) {
+      velocity.setFrom(velocity.normalized() * PhysicsCfg.maxVelocity);
     }
 
     position += velocity * dt;
 
-    final r = GameConstants.ballRadius;
+    final r = PhysicsCfg.ballRadius;
 
     if (position.x - r < 0) {
       position.x = r;
-      velocity.x = velocity.x.abs() * GameConstants.bounceDamping;
+      velocity.x = velocity.x.abs() * PhysicsCfg.bounceDamping;
     } else if (position.x + r > screenWidth) {
       position.x = screenWidth - r;
-      velocity.x = -velocity.x.abs() * GameConstants.bounceDamping;
+      velocity.x = -velocity.x.abs() * PhysicsCfg.bounceDamping;
     }
 
     for (int i = 0; i < pegs.length; i++) {
@@ -93,10 +91,9 @@ class PlinkoBall extends SpriteComponent {
         if (dot < 0) {
           velocity.x -= 2 * dot * nx;
           velocity.y -= 2 * dot * ny;
-          velocity.x *= GameConstants.bounceDamping;
-          velocity.y *= GameConstants.bounceDamping;
-          velocity.x +=
-              (_rng.nextDouble() - 0.5) * GameConstants.horizontalJitter;
+          velocity.x *= PhysicsCfg.bounceDamping;
+          velocity.y *= PhysicsCfg.bounceDamping;
+          velocity.x += (_rng.nextDouble() - 0.5) * PhysicsCfg.horizontalJitter;
           onPegHit(i);
         }
       }

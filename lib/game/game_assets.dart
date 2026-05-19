@@ -1,7 +1,7 @@
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 
-class SpriteCache {
+class GameAssets {
   late final Sprite greenCircle;
   late final Sprite circle2x;
   late final Sprite circleSkull;
@@ -10,7 +10,7 @@ class SpriteCache {
   Future<void> loadAll(FlameGame game) async {
     game.images.prefix = 'assets/';
 
-    final results = await Future.wait([
+    final loaded = await Future.wait([
       game.loadSprite('game_assets/green_circle.webp'),
       game.loadSprite('game_assets/circle_with_2x_inside.webp'),
       game.loadSprite('game_assets/circle_with_skull_inside.webp'),
@@ -21,15 +21,15 @@ class SpriteCache {
       game.loadSprite('game_assets/purple_sphere_asset.webp'),
     ]);
 
-    greenCircle = results[0];
-    circle2x = results[1];
-    circleSkull = results[2];
+    greenCircle = loaded[0];
+    circle2x = loaded[1];
+    circleSkull = loaded[2];
     spheres = {
-      'blue': results[3],
-      'green': results[4],
-      'yellow': results[5],
-      'red': results[6],
-      'purple': results[7],
+      'blue': loaded[3],
+      'green': loaded[4],
+      'yellow': loaded[5],
+      'red': loaded[6],
+      'purple': loaded[7],
     };
   }
 
