@@ -56,5 +56,4 @@ flutter:
 
   assets:
     - assets/game_assets/
-    - assets/loading_screen/
     - assets/logo_options/

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import '../utils/media_lib.dart';
 
 class PreloadScreen extends StatefulWidget {
@@ -11,59 +10,31 @@ class PreloadScreen extends StatefulWidget {
   State<PreloadScreen> createState() => _PreloadScreenState();
 }
 
-class _PreloadScreenState extends State<PreloadScreen> {
-  VideoPlayerController? _videoCtrl;
-  int _barState = 0;
-  bool _videoReady = false;
-  bool _showBar = false;
+class _PreloadScreenState extends State<PreloadScreen>
+    with SingleTickerProviderStateMixin {
+  double _progress = 0;
   bool _started = false;
+  late AnimationController _glowCtrl;
 
-  static const _barFrames = [
-    MediaLib.loadingBarStart,
-    MediaLib.loadingBarHalf,
-    MediaLib.loadingBarAlmostFull,
-    MediaLib.loadingBarFull,
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _glowCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_started) {
       _started = true;
-      _boot();
+      _preload();
     }
   }
 
-  Future<void> _boot() async {
-    await _initVideo();
-
-    for (final path in _barFrames) {
-      if (!mounted) return;
-      await precacheImage(AssetImage(path), context);
-    }
-    if (!mounted) return;
-    setState(() => _showBar = true);
-
-    await _preloadAssets();
-  }
-
-  Future<void> _initVideo() async {
-    if (!mounted) return;
-    final size = MediaQuery.of(context).size;
-    final asset = size.width > size.height
-        ? MediaLib.loadingHorizontal
-        : MediaLib.loadingVertical;
-
-    _videoCtrl = VideoPlayerController.asset(asset);
-    try {
-      await _videoCtrl!.initialize();
-      _videoCtrl!.setLooping(true);
-      _videoCtrl!.play();
-      if (mounted) setState(() => _videoReady = true);
-    } catch (_) {}
-  }
-
-  Future<void> _preloadAssets() async {
+  Future<void> _preload() async {
     final images = MediaLib.allImages;
     final total = images.length;
     int done = 0;
@@ -74,31 +45,19 @@ class _PreloadScreenState extends State<PreloadScreen> {
         await precacheImage(AssetImage(path), context);
       } catch (_) {}
       done++;
-
-      final progress = done / total;
-      final next = progress < 0.25
-          ? 0
-          : progress < 0.55
-              ? 1
-              : progress < 0.80
-                  ? 2
-                  : 3;
-
-      if (next != _barState && mounted) {
-        setState(() => _barState = next);
-      }
+      if (mounted) setState(() => _progress = done / total);
     }
 
     if (mounted) {
-      setState(() => _barState = 3);
-      await Future.delayed(const Duration(milliseconds: 600));
+      setState(() => _progress = 1.0);
+      await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) widget.onReady();
     }
   }
 
   @override
   void dispose() {
-    _videoCtrl?.dispose();
+    _glowCtrl.dispose();
     super.dispose();
   }
 
@@ -106,36 +65,86 @@ class _PreloadScreenState extends State<PreloadScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          if (_videoReady && _videoCtrl != null)
-            FittedBox(
-              fit: BoxFit.cover,
-              child: SizedBox(
-                width: _videoCtrl!.value.size.width,
-                height: _videoCtrl!.value.size.height,
-                child: VideoPlayer(_videoCtrl!),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment.center,
+            radius: 1.1,
+            colors: [Color(0xFF17134A), Color(0xFF070714), Colors.black],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    MediaLib.logo,
+                    width: 130,
+                    height: 130,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stack) => const SizedBox(height: 130),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'BOUNCE BALL 2',
+                    style: TextStyle(
+                      color: Colors.cyanAccent,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 5,
+                      shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 18)],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'LOADING',
+                    style: TextStyle(
+                      color: Colors.white54,
+                      fontSize: 13,
+                      letterSpacing: 4,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
-          if (_showBar)
             Positioned(
               bottom: 60,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 400),
-                  child: Image.asset(
-                    _barFrames[_barState],
-                    key: ValueKey(_barState),
-                    width: 250,
-                    fit: BoxFit.contain,
-                  ),
-                ),
+              left: 40,
+              right: 40,
+              child: AnimatedBuilder(
+                animation: _glowCtrl,
+                builder: (context, child) {
+                  return Column(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: LinearProgressIndicator(
+                          value: _progress,
+                          minHeight: 6,
+                          backgroundColor: Colors.white12,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color.lerp(
+                              Colors.cyanAccent,
+                              Colors.purpleAccent,
+                              _progress,
+                            )!
+                                .withValues(
+                              alpha: 0.7 + 0.3 * _glowCtrl.value,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

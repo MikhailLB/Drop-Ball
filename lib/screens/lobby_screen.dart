@@ -185,14 +185,9 @@ class _LobbyScreenState extends State<LobbyScreen>
               child: _buildPlayButton(activeSkin),
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _linkButton('Privacy Policy',
-                    'https://gravittyrush.com/privacy-policy.html'),
-                const SizedBox(width: 20),
-                _linkButton('Support', 'https://gravittyrush.com/support.html'),
-              ],
+            _linkButton(
+              'Privacy Policy',
+              'https://github.com/MikhailLB/privacy-policy-bounce-ball2/blob/main/PRIVACY%20POLICY.md',
             ),
             const SizedBox(height: 20),
           ],

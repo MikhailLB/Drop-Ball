@@ -26,15 +26,6 @@ class MediaLib {
   // Background
   static const String background = 'assets/game_assets/backround_asset.webp';
 
-  // Loading screen
-  static const String loadingBarStart = 'assets/loading_screen/loading_bar_start.webp';
-  static const String loadingBarHalf = 'assets/loading_screen/loading_bar_half.webp';
-  static const String loadingBarAlmostFull = 'assets/loading_screen/loading_bar_almost_full.webp';
-  static const String loadingBarFull = 'assets/loading_screen/loading_bar_full.webp';
-  static const String loadingBarEmpty = 'assets/loading_screen/loading_bar_empty.webp';
-  static const String loadingVertical = 'assets/loading_screen/loading_vertical.mp4';
-  static const String loadingHorizontal = 'assets/loading_screen/loading_horizontal.mp4';
-
   // Logo
   static const String logo = 'assets/logo_options/logo.jpg';
 
@@ -44,7 +35,6 @@ class MediaLib {
     greenCircle, circleWith2x, circleWithSkull, asset2x,
     blueSpike, redSpike,
     background,
-    loadingBarStart, loadingBarHalf, loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
     logo,
   ];
 }
