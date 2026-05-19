@@ -14,7 +14,7 @@ plugins {
 }
 
 android {
-    namespace = "com.gsteamgsgames.gravityrush"
+    namespace = "com.bounce.balltwo"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -37,7 +37,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.gsteamgsgames.gravityrush"
+        applicationId = "com.bounce.balltwo"
         minSdk = 24
         targetSdk = 35
         versionCode = flutter.versionCode
