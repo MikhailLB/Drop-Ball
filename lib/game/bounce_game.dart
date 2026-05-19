@@ -1,7 +1,6 @@
 import 'dart:ui' show Color;
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
-import 'package:flame/components.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import '../models/ball_skin.dart';
 import '../utils/game_config.dart';

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/app_mode.dart';
@@ -42,7 +41,6 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
-  _ProgressStage _stage = _ProgressStage.start;
   bool _leaving = false;
 
   late final AnimationController _barCtrl;
@@ -346,7 +344,6 @@ class _SplashScreenState extends State<SplashScreen>
 
   void _setStage(_ProgressStage s) {
     if (!mounted) return;
-    setState(() => _stage = s);
     final target = switch (s) {
       _ProgressStage.start => 0.15,
       _ProgressStage.midway => 0.55,
@@ -367,6 +364,8 @@ class _SplashScreenState extends State<SplashScreen>
     final canPrompt =
         widget.store.needsPushPrompt() &&
         await widget.push.canShowSystemPrompt();
+
+    if (!mounted) return;
 
     if (canPrompt) {
       Navigator.of(context).pushReplacement(
