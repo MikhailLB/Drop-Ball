@@ -1,5 +1,10 @@
+<<<<<<<< HEAD:lib/utils/game_config.dart
 class GameConfig {
   GameConfig._();
+========
+class PhysicsCfg {
+  PhysicsCfg._();
+>>>>>>>> white-ios:lib/utils/physics_cfg.dart
 
   static const double ballRadius = 12.0;
   static const double pegRadius = 7.0;
@@ -24,7 +29,7 @@ class GameConfig {
   static const double slotHeightFraction = 0.09;
   static const double boardMarginFraction = 0.06;
 
-  static const int goldPegBonus = 5;
-  static const int baseDropCoins = 10;
+  static const int goldPegBonus = 10;
+  static const int baseDropCoins = 15;
   static const double goldPegChance = 0.12;
 }

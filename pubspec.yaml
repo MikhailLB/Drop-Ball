@@ -1,5 +1,5 @@
-name: gravity_rush
-description: "Gravity Rush — neon plinko ball game with risk and reward."
+name: bounce_ball_two
+description: "Bounce Ball 2 — neon plinko ball game with risk and reward."
 publish_to: 'none'
 version: 1.0.2+20
 
@@ -75,7 +75,4 @@ flutter:
 
   assets:
     - assets/game_assets/
-    - assets/loading_screen/
     - assets/logo_options/
-    - assets/add_screens/
-    - assets/NO WIFI/

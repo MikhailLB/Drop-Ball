@@ -3,11 +3,18 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart' show TextStyle, FontWeight;
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
 import '../../utils/game_config.dart';
 import '../bounce_game.dart';
 
 class BoardLayout extends PositionComponent
     with HasGameReference<BounceGame> {
+========
+import '../../utils/physics_cfg.dart';
+import '../drop_game.dart';
+
+class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
   final List<Vector2> pegs = [];
   final List<Vector2> _basePegs = [];
   final List<bool> _isGold = [];
@@ -37,29 +44,29 @@ class BoardLayout extends PositionComponent
 
   bool get allWhitePegsHit => hitWhitePegs >= totalWhitePegs;
 
-  late final Sprite _circleSkull;
+  late final Sprite _skullIcon;
 
-  final Paint _pegPaint = Paint()..color = const Color(0xFFDDDDEE);
+  final Paint _pegPaint = Paint()..color = const Color(0xFFDDCCFF);
   final Paint _pegGlowPaint = Paint()
-    ..color = const Color(0x4400CCFF)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-  final Paint _goldPegPaint = Paint()..color = const Color(0xFFFFD700);
+    ..color = const Color(0x557788FF)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+  final Paint _goldPegPaint = Paint()..color = const Color(0xFFFFCC00);
   final Paint _goldGlowPaint = Paint()
-    ..color = const Color(0x55FFD700)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-  final Paint _spentPegPaint = Paint()..color = const Color(0xFF555566);
+    ..color = const Color(0x77FFB800)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+  final Paint _spentPegPaint = Paint()..color = const Color(0xFF3D2060);
   final Paint _movingGlowPaint = Paint()
-    ..color = const Color(0x33FF66FF)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    ..color = const Color(0x66FF22CC)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
   final Paint _slotFillPaint = Paint();
   final Paint _slotBorderPaint = Paint()
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
+    ..strokeWidth = 1.8;
 
   final TextPaint _slotTextPaint = TextPaint(
     style: const TextStyle(
-      color: Color(0xFFFFFFFF),
-      fontSize: 13,
+      color: Color(0xFFEEDDFF),
+      fontSize: 14,
       fontWeight: FontWeight.bold,
     ),
   );
@@ -68,10 +75,14 @@ class BoardLayout extends PositionComponent
   Future<void> onLoad() async {
     size = game.size;
     priority = 0;
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
     _circleSkull = game.spriteRegistry.circleSkull;
+========
+    _skullIcon = game.spriteAssets.circleSkull;
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
     _buildLayout();
     _assignPegTypes();
-    generateSlots();
+    buildSlots();
   }
 
   void _buildLayout() {
@@ -83,6 +94,7 @@ class BoardLayout extends PositionComponent
 
     final w = size.x;
     final h = size.y;
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
     final topY = h * GameConfig.boardTopFraction;
     final botY = h * GameConfig.boardBottomFraction;
     final boardH = botY - topY;
@@ -101,14 +113,39 @@ class BoardLayout extends PositionComponent
         }
       } else {
         for (int col = 0; col < GameConfig.pegColsNarrow; col++) {
+========
+    final topY = h * PhysicsCfg.boardTopFraction;
+    final botY = h * PhysicsCfg.boardBottomFraction;
+    final boardH = botY - topY;
+    final margin = w * PhysicsCfg.boardMarginFraction;
+    final usableW = w - 2 * margin;
+
+    _actualPegRadius = PhysicsCfg.pegRadius;
+    final colSpacing = usableW / (PhysicsCfg.pegColsWide - 1);
+    final rowSpacing = boardH / (PhysicsCfg.pegRows + 1);
+
+    for (int row = 0; row < PhysicsCfg.pegRows; row++) {
+      final y = topY + (row + 1) * rowSpacing;
+      if (row.isEven) {
+        for (int col = 0; col < PhysicsCfg.pegColsWide; col++) {
+          _addPeg(Vector2(margin + col * colSpacing, y));
+        }
+      } else {
+        for (int col = 0; col < PhysicsCfg.pegColsNarrow; col++) {
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
           _addPeg(Vector2(margin + colSpacing / 2 + col * colSpacing, y));
         }
       }
     }
 
     _slotsY = botY + 10;
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
     _slotsBottom = _slotsY + h * GameConfig.slotHeightFraction;
     _slotWidth = w / GameConfig.numSlots;
+========
+    _slotsBottom = _slotsY + h * PhysicsCfg.slotHeightFraction;
+    _slotWidth = w / PhysicsCfg.numSlots;
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
   }
 
   void _addPeg(Vector2 pos) {
@@ -122,7 +159,11 @@ class BoardLayout extends PositionComponent
   void _assignPegTypes() {
     final rng = Random();
     for (int i = 0; i < pegs.length; i++) {
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
       _isGold[i] = rng.nextDouble() < GameConfig.goldPegChance;
+========
+      _isGold[i] = rng.nextDouble() < PhysicsCfg.goldPegChance;
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
       _isHit[i] = false;
     }
   }
@@ -135,15 +176,14 @@ class BoardLayout extends PositionComponent
     _moveAmplitude = moveAmplitude;
     for (int i = 0; i < pegs.length; i++) {
       _isMoving[i] = rng.nextDouble() < moveChance;
-      if (!_isMoving[i]) {
-        pegs[i].setFrom(_basePegs[i]);
-      }
+      if (!_isMoving[i]) pegs[i].setFrom(_basePegs[i]);
     }
   }
 
   int onPegHit(int index) {
     if (index < 0 || index >= pegs.length || _isHit[index]) return 0;
     _isHit[index] = true;
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
     return _isGold[index] ? GameConfig.goldPegBonus : 0;
   }
 
@@ -154,6 +194,18 @@ class BoardLayout extends PositionComponent
     int placed = 0;
     while (placed < dm.skullCount && placed < GameConfig.numSlots - 1) {
       final idx = rng.nextInt(GameConfig.numSlots);
+========
+    return _isGold[index] ? PhysicsCfg.goldPegBonus : 0;
+  }
+
+  void buildSlots() {
+    final rs = game.roundScaler;
+    slotMultipliers = rs.buildMultipliers();
+    final rng = Random();
+    int placed = 0;
+    while (placed < rs.skullCount && placed < PhysicsCfg.numSlots - 1) {
+      final idx = rng.nextInt(PhysicsCfg.numSlots);
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
       if (slotMultipliers[idx] > 0) {
         slotMultipliers[idx] = 0;
         placed++;
@@ -165,7 +217,11 @@ class BoardLayout extends PositionComponent
   double getMultiplier(int index) => slotMultipliers[index];
 
   int getSlotIndex(double x) {
+<<<<<<<< HEAD:lib/game/components/board_layout.dart
     return (x / _slotWidth).floor().clamp(0, GameConfig.numSlots - 1);
+========
+    return (x / _slotWidth).floor().clamp(0, PhysicsCfg.numSlots - 1);
+>>>>>>>> white-ios:lib/game/components/pin_field.dart
   }
 
   @override
@@ -174,8 +230,7 @@ class BoardLayout extends PositionComponent
     _time += dt;
     for (int i = 0; i < pegs.length; i++) {
       if (_isMoving[i]) {
-        pegs[i].x =
-            _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
+        pegs[i].x = _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
       }
     }
   }
@@ -188,11 +243,11 @@ class BoardLayout extends PositionComponent
       if (_isHit[i]) {
         canvas.drawCircle(offset, _actualPegRadius, _spentPegPaint);
       } else if (_isGold[i]) {
-        canvas.drawCircle(offset, _actualPegRadius + 4, _goldGlowPaint);
+        canvas.drawCircle(offset, _actualPegRadius + 6, _goldGlowPaint);
         canvas.drawCircle(offset, _actualPegRadius, _goldPegPaint);
       } else {
         final glow = _isMoving[i] ? _movingGlowPaint : _pegGlowPaint;
-        canvas.drawCircle(offset, _actualPegRadius + 3, glow);
+        canvas.drawCircle(offset, _actualPegRadius + 5, glow);
         canvas.drawCircle(offset, _actualPegRadius, _pegPaint);
       }
     }
@@ -201,26 +256,25 @@ class BoardLayout extends PositionComponent
 
     for (int i = 0; i < slotMultipliers.length; i++) {
       final x = i * _slotWidth;
-      final rect = Rect.fromLTWH(
-          x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
-      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
+      final rect = Rect.fromLTWH(x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
+      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(10));
       final cx = x + _slotWidth / 2;
       final cy = _slotsY + (_slotsBottom - _slotsY) / 2;
       final isSkull = slotMultipliers[i] == 0;
 
       if (isSkull) {
-        _slotFillPaint.color = const Color(0x30FF0000);
-        _slotBorderPaint.color = const Color(0x66FF0000);
+        _slotFillPaint.color = const Color(0x40CC0033);
+        _slotBorderPaint.color = const Color(0x99FF0044);
         canvas.drawRRect(rrect, _slotFillPaint);
         canvas.drawRRect(rrect, _slotBorderPaint);
-        _circleSkull.render(
+        _skullIcon.render(
           canvas,
           position: Vector2(cx - iconSize / 2, cy - iconSize / 2),
           size: Vector2.all(iconSize),
         );
       } else {
-        _slotFillPaint.color = const Color(0x3000FF00);
-        _slotBorderPaint.color = const Color(0x6600FF00);
+        _slotFillPaint.color = const Color(0x288833FF);
+        _slotBorderPaint.color = const Color(0x99AA66FF);
         canvas.drawRRect(rrect, _slotFillPaint);
         canvas.drawRRect(rrect, _slotBorderPaint);
         _slotTextPaint.render(
