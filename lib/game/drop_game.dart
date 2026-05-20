@@ -1,5 +1,5 @@
 import 'dart:math' show sin;
-import 'dart:ui' show Canvas, Color, Offset, Paint;
+import 'dart:ui' show BlurStyle, Canvas, Color, MaskFilter, Offset, Paint;
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/game.dart';
@@ -33,6 +33,7 @@ class NeonDropGame extends FlameGame with PanDetector {
   bool _awaitingDrop = true;
   double _cooldown = 0;
   bool _inCooldown = false;
+  int _streak = 0;
 
   DropResult? endResult;
   int lastAmount = 0;
@@ -44,7 +45,7 @@ class NeonDropGame extends FlameGame with PanDetector {
   }
 
   @override
-  Color backgroundColor() => const Color(0xFF080818);
+  Color backgroundColor() => const Color(0xFF08001A);
 
   @override
   Future<void> onLoad() async {
@@ -57,6 +58,7 @@ class NeonDropGame extends FlameGame with PanDetector {
     _isOver = false;
     _awaitingDrop = true;
     _inCooldown = false;
+    _streak = 0;
     endResult = null;
     lastAmount = 0;
     wallet.resetGame();
@@ -131,7 +133,7 @@ class NeonDropGame extends FlameGame with PanDetector {
       add(_FloatLabel(
         text: '+$bonus',
         position: _field.pegs[pegIndex].clone(),
-        color: const Color(0xFFFFD700),
+        color: const Color(0xFFFFCC00),
       ));
     }
   }
@@ -144,17 +146,29 @@ class NeonDropGame extends FlameGame with PanDetector {
     final slot = _field.getSlotIndex(x);
 
     if (_field.isSkullSlot(slot)) {
+      _streak = 0;
       _die();
       return;
     }
 
-    final multi = _field.getMultiplier(slot);
+    var multi = _field.getMultiplier(slot);
+
+    if (_streak >= 2) {
+      multi = double.parse((multi + 0.5).toStringAsFixed(1));
+      add(_FloatLabel(
+        text: 'STREAK +0.5x',
+        position: Vector2(size.x / 2, _field.slotsY - 50),
+        color: const Color(0xFFFF8C00),
+      ));
+    }
+
+    _streak++;
     wallet.applyLanding(multi);
 
     add(_FloatLabel(
-      text: '×$multi',
+      text: 'x$multi',
       position: Vector2(x, _field.slotsY - 20),
-      color: const Color(0xFF00FF88),
+      color: const Color(0xFFBB88FF),
     ));
 
     roundScaler.advance();

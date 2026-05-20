@@ -45,8 +45,10 @@ class CoinWallet {
 
   int burn() {
     final amount = _pending;
+    _balance += (_pending * 0.3).round();
     _pending = 0;
     _goldThisDrop = 0;
+    _persist();
     return amount;
   }
 

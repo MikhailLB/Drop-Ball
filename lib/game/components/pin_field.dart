@@ -38,27 +38,27 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
 
   late final Sprite _skullIcon;
 
-  final Paint _pegPaint = Paint()..color = const Color(0xFFDDDDEE);
+  final Paint _pegPaint = Paint()..color = const Color(0xFFDDCCFF);
   final Paint _pegGlowPaint = Paint()
-    ..color = const Color(0x4400CCFF)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-  final Paint _goldPegPaint = Paint()..color = const Color(0xFFFFD700);
+    ..color = const Color(0x557788FF)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+  final Paint _goldPegPaint = Paint()..color = const Color(0xFFFFCC00);
   final Paint _goldGlowPaint = Paint()
-    ..color = const Color(0x55FFD700)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-  final Paint _spentPegPaint = Paint()..color = const Color(0xFF555566);
+    ..color = const Color(0x77FFB800)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+  final Paint _spentPegPaint = Paint()..color = const Color(0xFF3D2060);
   final Paint _movingGlowPaint = Paint()
-    ..color = const Color(0x33FF66FF)
-    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    ..color = const Color(0x66FF22CC)
+    ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
   final Paint _slotFillPaint = Paint();
   final Paint _slotBorderPaint = Paint()
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 1.5;
+    ..strokeWidth = 1.8;
 
   final TextPaint _slotTextPaint = TextPaint(
     style: const TextStyle(
-      color: Color(0xFFFFFFFF),
-      fontSize: 13,
+      color: Color(0xFFEEDDFF),
+      fontSize: 14,
       fontWeight: FontWeight.bold,
     ),
   );
@@ -184,11 +184,11 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
       if (_isHit[i]) {
         canvas.drawCircle(offset, _actualPegRadius, _spentPegPaint);
       } else if (_isGold[i]) {
-        canvas.drawCircle(offset, _actualPegRadius + 4, _goldGlowPaint);
+        canvas.drawCircle(offset, _actualPegRadius + 6, _goldGlowPaint);
         canvas.drawCircle(offset, _actualPegRadius, _goldPegPaint);
       } else {
         final glow = _isMoving[i] ? _movingGlowPaint : _pegGlowPaint;
-        canvas.drawCircle(offset, _actualPegRadius + 3, glow);
+        canvas.drawCircle(offset, _actualPegRadius + 5, glow);
         canvas.drawCircle(offset, _actualPegRadius, _pegPaint);
       }
     }
@@ -198,14 +198,14 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
     for (int i = 0; i < slotMultipliers.length; i++) {
       final x = i * _slotWidth;
       final rect = Rect.fromLTWH(x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
-      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
+      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(10));
       final cx = x + _slotWidth / 2;
       final cy = _slotsY + (_slotsBottom - _slotsY) / 2;
       final isSkull = slotMultipliers[i] == 0;
 
       if (isSkull) {
-        _slotFillPaint.color = const Color(0x30FF0000);
-        _slotBorderPaint.color = const Color(0x66FF0000);
+        _slotFillPaint.color = const Color(0x40CC0033);
+        _slotBorderPaint.color = const Color(0x99FF0044);
         canvas.drawRRect(rrect, _slotFillPaint);
         canvas.drawRRect(rrect, _slotBorderPaint);
         _skullIcon.render(
@@ -214,8 +214,8 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
           size: Vector2.all(iconSize),
         );
       } else {
-        _slotFillPaint.color = const Color(0x3000FF00);
-        _slotBorderPaint.color = const Color(0x6600FF00);
+        _slotFillPaint.color = const Color(0x288833FF);
+        _slotBorderPaint.color = const Color(0x99AA66FF);
         canvas.drawRRect(rrect, _slotFillPaint);
         canvas.drawRRect(rrect, _slotBorderPaint);
         _slotTextPaint.render(

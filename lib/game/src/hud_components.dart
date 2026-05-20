@@ -7,15 +7,12 @@ class _CoinsHud extends TextComponent with HasGameReference<NeonDropGame> {
           priority: 100,
           textRenderer: TextPaint(
             style: const TextStyle(
-              color: Color(0xFFFFFFFF),
+              color: Color(0xFFFFCC00),
               fontSize: 30,
               fontWeight: FontWeight.bold,
               shadows: [
-                Shadow(
-                  color: Color(0xFF000000),
-                  blurRadius: 8,
-                  offset: Offset(2, 2),
-                ),
+                Shadow(color: Color(0xFFFFAA00), blurRadius: 14),
+                Shadow(color: Color(0xFF000000), blurRadius: 4, offset: Offset(1, 1)),
               ],
             ),
           ),
@@ -40,8 +37,9 @@ class _PegTracker extends TextComponent with HasGameReference<NeonDropGame> {
           priority: 100,
           textRenderer: TextPaint(
             style: const TextStyle(
-              color: Color(0xAAFFFFFF),
+              color: Color(0xAABBAAFF),
               fontSize: 14,
+              shadows: [Shadow(color: Color(0x88AA66FF), blurRadius: 8)],
             ),
           ),
         );
@@ -64,12 +62,12 @@ class _DropHint extends TextComponent with HasGameReference<NeonDropGame> {
 
   _DropHint()
       : super(
-          text: '● HIT ALL WHITE PEGS ● DRAG TO STEER ●',
+          text: '* HIT ALL PEGS * DRAG TO STEER *',
           anchor: Anchor.center,
           priority: 100,
           textRenderer: TextPaint(
             style: const TextStyle(
-              color: Color(0x77FFFFFF),
+              color: Color(0x99AA99FF),
               fontSize: 11,
               letterSpacing: 1.5,
             ),

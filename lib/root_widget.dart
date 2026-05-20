@@ -21,11 +21,19 @@ class _BallDropAppState extends State<BallDropApp> {
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 
-  void _onReady() => setState(() => _route = _ViewRoute.lobby);
+  void _onReady() {
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    setState(() => _route = _ViewRoute.lobby);
+  }
 
   void _onPlay(BallSkin skin) {
     setState(() {

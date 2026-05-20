@@ -23,21 +23,21 @@ class RoundEndView extends StatelessWidget {
 
     switch (result) {
       case DropResult.died:
-        title = 'GAME OVER';
-        titleColor = Colors.redAccent;
-        subtitle = 'BURNED: $amount coins';
+        title = 'SKULL HIT';
+        titleColor = const Color(0xFFFF3355);
+        subtitle = 'LOST: $amount — 30% saved as consolation';
       case DropResult.collected:
-        title = 'COLLECTED!';
-        titleColor = Colors.greenAccent;
+        title = 'CASHED OUT!';
+        titleColor = const Color(0xFFCC66FF);
         subtitle = 'SAVED: $amount coins';
       case DropResult.won:
         title = 'ALL PEGS HIT!';
-        titleColor = Colors.amberAccent;
-        subtitle = 'BONUS 2× — SAVED: $amount coins';
+        titleColor = const Color(0xFFFFCC00);
+        subtitle = 'BONUS 2x — SAVED: $amount coins';
     }
 
     return Container(
-      color: const Color(0xCC000000),
+      color: const Color(0xCC0A001A),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -70,9 +70,9 @@ class RoundEndView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 40),
-            _btn('RETRY', Colors.cyanAccent, () => game.restart()),
+            _btn('RETRY', const Color(0xFFCC66FF), () => game.restart()),
             const SizedBox(height: 16),
-            _btn('MAIN MENU', Colors.orangeAccent, onMainMenu),
+            _btn('MAIN MENU', const Color(0xFFFFCC00), onMainMenu),
           ],
         ),
       ),

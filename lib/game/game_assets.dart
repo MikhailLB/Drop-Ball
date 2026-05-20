@@ -2,8 +2,6 @@ import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 
 class GameAssets {
-  late final Sprite greenCircle;
-  late final Sprite circle2x;
   late final Sprite circleSkull;
   late final Map<String, Sprite> spheres;
 
@@ -11,8 +9,6 @@ class GameAssets {
     game.images.prefix = 'assets/';
 
     final loaded = await Future.wait([
-      game.loadSprite('game_assets/green_circle.webp'),
-      game.loadSprite('game_assets/circle_with_2x_inside.webp'),
       game.loadSprite('game_assets/circle_with_skull_inside.webp'),
       game.loadSprite('game_assets/blue_sphere_asset.webp'),
       game.loadSprite('game_assets/green_sphere_asset.webp'),
@@ -21,15 +17,13 @@ class GameAssets {
       game.loadSprite('game_assets/purple_sphere_asset.webp'),
     ]);
 
-    greenCircle = loaded[0];
-    circle2x = loaded[1];
-    circleSkull = loaded[2];
+    circleSkull = loaded[0];
     spheres = {
-      'blue': loaded[3],
-      'green': loaded[4],
-      'yellow': loaded[5],
-      'red': loaded[6],
-      'purple': loaded[7],
+      'blue': loaded[1],
+      'green': loaded[2],
+      'yellow': loaded[3],
+      'red': loaded[4],
+      'purple': loaded[5],
     };
   }
 

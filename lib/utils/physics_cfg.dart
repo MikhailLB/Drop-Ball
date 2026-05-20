@@ -24,7 +24,7 @@ class PhysicsCfg {
   static const double slotHeightFraction = 0.09;
   static const double boardMarginFraction = 0.06;
 
-  static const int goldPegBonus = 5;
-  static const int baseDropCoins = 10;
+  static const int goldPegBonus = 10;
+  static const int baseDropCoins = 15;
   static const double goldPegChance = 0.12;
 }

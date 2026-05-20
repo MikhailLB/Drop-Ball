@@ -62,11 +62,11 @@ class _ArenaScreenState extends State<ArenaScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: Colors.black45,
+                  color: const Color(0xAA1A0033),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white24),
+                  border: Border.all(color: const Color(0x66AA66FF)),
                 ),
-                child: const Icon(Icons.pause, color: Colors.white70, size: 28),
+                child: const Icon(Icons.pause, color: Color(0xCCBB99FF), size: 28),
               ),
             ),
           ),
@@ -85,23 +85,27 @@ class _ArenaScreenState extends State<ArenaScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 28, vertical: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0xCC00AA44),
+                        color: const Color(0xCC5500AA),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.greenAccent, width: 2),
+                        border: Border.all(
+                          color: const Color(0xFFAA66FF),
+                          width: 2,
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.greenAccent.withValues(alpha: 0.4),
-                            blurRadius: 12,
+                            color: const Color(0xFF9933FF).withValues(alpha: 0.5),
+                            blurRadius: 18,
                           ),
                         ],
                       ),
                       child: Text(
                         'COLLECT  ${_game.wallet.pending}',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFFFFCC00),
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 2,
+                          shadows: [Shadow(color: Color(0xFFFFAA00), blurRadius: 8)],
                         ),
                       ),
                     ),

@@ -93,7 +93,7 @@ class _LobbyScreenState extends State<LobbyScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
+        backgroundColor: const Color(0xFF150025),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'BUY ${skin.name.toUpperCase()}?',
@@ -137,7 +137,7 @@ class _LobbyScreenState extends State<LobbyScreen>
   Widget build(BuildContext context) {
     final activeSkin = BallSkin.all[_activeSkinIdx];
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1A),
+      backgroundColor: const Color(0xFF080015),
       body: SafeArea(
         child: Column(
           children: [
@@ -145,30 +145,34 @@ class _LobbyScreenState extends State<LobbyScreen>
             Image.asset(MediaLib.logo, width: 140, height: 140),
             const SizedBox(height: 10),
             const Text(
-              'BOUNCE BALL 2',
+              'GRAVITY RUSH',
               style: TextStyle(
-                color: Colors.cyanAccent,
+                color: Color(0xFFCC66FF),
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 6,
-                shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)],
+                shadows: [
+                  Shadow(color: Color(0xFFCC66FF), blurRadius: 24),
+                  Shadow(color: Color(0xFF8800FF), blurRadius: 8),
+                ],
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'BALANCE: ${BallSkin.formatPrice(_balance)}',
-              style: TextStyle(
-                color: Colors.greenAccent.withValues(alpha: 0.7),
+              style: const TextStyle(
+                color: Color(0xFFFFCC00),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2,
+                shadows: [Shadow(color: Color(0xFFFFAA00), blurRadius: 10)],
               ),
             ),
             const SizedBox(height: 6),
-            Text(
+            const Text(
               'SHOP',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
+                color: Color(0x77CC66FF),
                 fontSize: 13,
                 letterSpacing: 4,
               ),
@@ -298,7 +302,7 @@ class _LobbyScreenState extends State<LobbyScreen>
                       BallSkin.formatPrice(skin.price),
                       style: TextStyle(
                         color: canAfford
-                            ? Colors.greenAccent.withValues(alpha: 0.8)
+                            ? Colors.amberAccent.withValues(alpha: 0.9)
                             : Colors.redAccent.withValues(alpha: 0.6),
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

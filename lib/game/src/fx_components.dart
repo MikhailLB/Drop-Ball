@@ -5,7 +5,7 @@ class _BallTrailFx extends Component with HasGameReference<NeonDropGame> {
   final BallSkin skin;
   final List<Vector2> _pts = [];
   final Paint _paint = Paint();
-  static const int _maxLen = 12;
+  static const int _maxLen = 24;
 
   _BallTrailFx({required this.skin}) {
     priority = 5;
@@ -29,8 +29,10 @@ class _BallTrailFx extends Component with HasGameReference<NeonDropGame> {
   void render(Canvas canvas) {
     for (int i = 0; i < _pts.length; i++) {
       final t = i / _pts.length;
-      _paint.color = skin.primaryColor.withValues(alpha: t * 0.25);
-      final r = PhysicsCfg.ballRadius * t * 0.4;
+      _paint
+        ..color = skin.primaryColor.withValues(alpha: t * 0.55)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, (1 - t) * 4 + 1);
+      final r = PhysicsCfg.ballRadius * t * 0.75;
       canvas.drawCircle(Offset(_pts[i].x, _pts[i].y), r, _paint);
     }
   }
@@ -51,9 +53,12 @@ class _FloatLabel extends TextComponent {
           textRenderer: TextPaint(
             style: TextStyle(
               color: color,
-              fontSize: 22,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
-              shadows: [Shadow(color: color, blurRadius: 10)],
+              shadows: [
+                Shadow(color: color, blurRadius: 16),
+                Shadow(color: color, blurRadius: 6),
+              ],
             ),
           ),
         );
@@ -62,7 +67,7 @@ class _FloatLabel extends TextComponent {
   void update(double dt) {
     super.update(dt);
     _life += dt;
-    position.y -= 60 * dt;
-    if (_life >= 0.8) removeFromParent();
+    position.y -= 85 * dt;
+    if (_life >= 1.1) removeFromParent();
   }
 }
