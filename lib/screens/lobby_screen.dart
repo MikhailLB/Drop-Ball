@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ball_skin.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../config/app_config.dart';
 import '../utils/media_paths.dart';
-import 'web_page.dart';
 import 'profile_screen.dart';
 
 class MainMenuScreen extends StatefulWidget {
@@ -214,11 +215,9 @@ class _MainMenuScreenState extends State<MainMenuScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _linkButton('Privacy Policy',
-                    'https://gravittyrush.com/privacy-policy.html'),
+                _linkButton('Privacy Policy', AppConfig.privacyUrl),
                 const SizedBox(width: 20),
-                _linkButton(
-                    'Support', 'https://gravittyrush.com/support.html'),
+                _linkButton('Support', AppConfig.supportUrl),
               ],
             ),
             const SizedBox(height: 20),
@@ -230,11 +229,8 @@ class _MainMenuScreenState extends State<MainMenuScreen>
 
   Widget _linkButton(String label, String url) {
     return GestureDetector(
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => WebPage(title: label, url: url),
-        ),
-      ),
+      onTap: () => launchUrl(Uri.parse(url),
+          mode: LaunchMode.externalApplication),
       child: Text(
         label,
         style: TextStyle(
