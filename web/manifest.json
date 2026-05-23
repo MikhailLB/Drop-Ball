@@ -1,6 +1,6 @@
 {
-    "name": "Drop Ball",
-    "short_name": "Drop Ball",
+    "name": "DropBall: Neon Edition",
+    "short_name": "DropBall",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

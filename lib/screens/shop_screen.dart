@@ -236,9 +236,9 @@ class _ShopScreenState extends State<ShopScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Title
-        Text('DROP BALL', style: TextStyle(
+        Text('DROPBALL: NEON EDITION', style: TextStyle(
           color: Colors.white.withValues(alpha: 0.9),
-          fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 5,
+          fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 3,
         )),
         const SizedBox(height: 28),
         // Hero orb with orbit ring
