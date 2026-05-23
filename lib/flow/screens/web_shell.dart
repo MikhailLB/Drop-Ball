@@ -89,7 +89,17 @@ class _WebShellState extends State<WebShell> with WidgetsBindingObserver {
       ..setNavigationDelegate(_buildDelegate());
 
     _configurePlatform();
-    _wv.loadRequest(Uri.parse(widget.destination));
+
+    // Delay loadRequest so SystemUiMode.immersiveSticky has time to settle
+    // before WKWebView measures its viewport. Without this delay, on cold-start
+    // push taps the WKWebView calculates dimensions with the status bar still
+    // visible, causing the site to render with wrong height (stretched layout).
+    // 300ms is enough for the OS to apply immersive mode after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) _wv.loadRequest(Uri.parse(widget.destination));
+      });
+    });
 
     widget.pulse.onPushUrl = (url) {
       if (!mounted) return;
@@ -127,17 +137,21 @@ class _WebShellState extends State<WebShell> with WidgetsBindingObserver {
         _injectKeyboardFix();
         _injectAntiZoom();
         _injectMediaAutoplay();
-        // Dispatch synthetic resize ~800ms after page load to fix
-        // cold-start viewport stretching when immersive mode settles.
-        Future.delayed(const Duration(milliseconds: 800), () {
-          if (!mounted) return;
-          _wv.runJavaScript(
-            'window.dispatchEvent(new Event("resize"));'
-            'if(window.visualViewport)'
-            '  window.visualViewport.dispatchEvent(new Event("resize"));',
-          );
-          _injectSafeArea();
-        });
+        // Dispatch synthetic resize events to force viewport recalculation
+        // after immersive mode settles — cold-start push taps can cause the
+        // site to bake in wrong dimensions before SystemUiMode applies.
+        for (final ms in [500, 900, 1500]) {
+          Future.delayed(Duration(milliseconds: ms), () {
+            if (!mounted) return;
+            _wv.runJavaScript(
+              'window.dispatchEvent(new Event("resize"));'
+              'if(window.visualViewport){'
+              '  window.visualViewport.dispatchEvent(new Event("resize"));'
+              '}',
+            );
+            if (ms >= 900) _injectSafeArea();
+          });
+        }
         if (!_firstPaintFired) {
           _firstPaintFired = true;
           Future.delayed(const Duration(milliseconds: 600), () {
