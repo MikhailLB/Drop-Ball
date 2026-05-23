@@ -83,25 +83,6 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoadsInWebContent</key>
-		<true/>
-	</dict>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Your data will be used to measure advertising effectiveness and to deliver personalized content within this app.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Camera access is used to take photos when uploading files inside the app.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Microphone access may be used for audio and video recording when uploading media inside the app.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Photo library access is used to attach images when uploading files inside the app.</string>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>remote-notification</string>
-	</array>
-	<key>FirebaseAppDelegateProxyEnabled</key>
-	<true/>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>https</string>

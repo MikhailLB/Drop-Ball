@@ -33,6 +33,8 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  config:
+    enable-swift-package-manager: false
 
   assets:
     - assets/game_assets/
