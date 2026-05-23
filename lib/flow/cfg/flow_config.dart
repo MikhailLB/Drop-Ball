@@ -8,7 +8,7 @@ abstract final class FlowConfig {
   static const String iosStoreId = '6771137735';
 
   // ── Android/iOS bundle / package ID ──────────────────────
-  static const String bundleId = 'com.dropball.neonedition';
+  static const String bundleId = 'com.neonfall.dropball';
 
   // ── Display name used in debug logs ──────────────────────
   static const String appLabel = 'DropBall: Neon Edition';
