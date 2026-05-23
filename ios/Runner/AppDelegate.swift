@@ -4,30 +4,19 @@ import UIKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    // Register all Flutter plugins (including firebase_messaging) eagerly so
-    // that FCM can install its UNUserNotificationCenterDelegate swizzle before
-    // any notification taps are delivered. Lazy registration causes the
-    // swizzle to arrive too late and notification tap callbacks are silently
-    // dropped on warm-start.
-    GeneratedPluginRegistrant.register(with: self)
+    override func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Register plugins eagerly so Firebase Messaging installs its
+        // UNUserNotificationCenterDelegate swizzle before any push tap arrives.
+        GeneratedPluginRegistrant.register(with: self)
 
-    // FirebaseAppDelegateProxyEnabled=YES in Info.plist means Firebase
-    // Messaging swizzles AppDelegate methods automatically (APNs token
-    // forwarding, didReceiveRemoteNotification, etc.). No manual calls to
-    // FirebaseApp.configure(), registerForRemoteNotifications(), or
-    // Messaging.messaging().apnsToken are needed.
-    //
-    // Cold-start push URLs (from killed-app taps) are captured by
-    // SceneDelegate.scene(_:willConnectTo:options:) and persisted into
-    // UserDefaults under a `flutter.`-prefixed key, so the Dart side
-    // reads them through SharedPreferences without any MethodChannel
-    // registration. See SceneDelegate.swift / native_push_bridge.dart for
-    // the reasoning.
+        // Explicit APNs registration on every launch — ensures the FCM→APNs
+        // token mapping is refreshed even when permission was granted in a
+        // previous install. Without this a stale mapping can stop push delivery.
+        application.registerForRemoteNotifications()
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
-  }
+        return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    }
 }

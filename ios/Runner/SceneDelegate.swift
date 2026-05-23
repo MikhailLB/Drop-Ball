@@ -2,79 +2,85 @@ import Flutter
 import UIKit
 import UserNotifications
 
-/// Scene-based iOS apps (UIApplicationSceneManifest in Info.plist) DO NOT
-/// receive cold-start notification responses through the traditional
-/// `application(_:didFinishLaunchingWithOptions:)` launchOptions[remoteNotification]
-/// path that Firebase Messaging's swizzle relies on. Instead, when the user taps
-/// a push while the app is killed, iOS launches the app and delivers the tap
-/// via `scene(_:willConnectTo:options:)` in `connectionOptions.notificationResponse`.
+/// Scene-based apps deliver cold-start push taps through
+/// `scene(_:willConnectTo:options:)` — NOT through the traditional
+/// AppDelegate launchOptions path that Firebase swizzle reads.
+/// `getInitialMessage()` therefore returns nil for these taps.
 ///
-/// Because Firebase swizzle never sees this response, `FirebaseMessaging.instance
-/// .getInitialMessage()` returns nil for scene-based apps on cold-start tap. This
-/// is a long-standing FlutterFire issue (firebase/flutterfire#8896) that affects
-/// every Flutter iOS app generated with the modern scene template.
-///
-/// To fix this iron-clad we capture the notification response here ourselves,
-/// pull the destination URL out of its userInfo, and stash it into UserDefaults
-/// under a `flutter.`-prefixed key — which is exactly the namespace the
-/// `shared_preferences` Flutter plugin uses on iOS. Dart reads it back through
-/// SharedPreferences without any MethodChannel registration timing race.
+/// We capture the URL here and store it in UserDefaults under
+/// `flutter.db_flow_tap_url`. The `flutter.` prefix is mandatory
+/// because `shared_preferences` on iOS reads UserDefaults values
+/// using that prefix, so `ColdTapReader.consumeTapUrl()` can pick
+/// it up through SharedPreferences with no MethodChannel dance.
 class SceneDelegate: FlutterSceneDelegate {
-  /// UserDefaults key that mirrors the Dart-side native cold-start slot.
-  /// Read by `lib/services/native_push_bridge.dart#consumeColdStartUrl`.
-  ///
-  /// The `flutter.` prefix is mandatory: the Flutter `shared_preferences`
-  /// plugin on iOS namespaces all keys with `flutter.` and would silently
-  /// ignore anything written without it. This way the Dart side reads the
-  /// value directly through SharedPreferences without needing any
-  /// MethodChannel handshake.
-  static let coldStartUrlKey = "flutter.gr_native_cold_start_url"
+    static let tapUrlKey = "flutter.db_flow_tap_url"
 
-  override func scene(
-    _ scene: UIScene,
-    willConnectTo session: UISceneSession,
-    options connectionOptions: UIScene.ConnectionOptions
-  ) {
-    super.scene(scene, willConnectTo: session, options: connectionOptions)
+    override func scene(
+        _ scene: UIScene,
+        willConnectTo session: UISceneSession,
+        options connectionOptions: UIScene.ConnectionOptions
+    ) {
+        super.scene(scene, willConnectTo: session, options: connectionOptions)
 
-    if let response = connectionOptions.notificationResponse,
-       let url = SceneDelegate.extractUrl(
-         from: response.notification.request.content.userInfo
-       )
-    {
-      SceneDelegate.persist(url: url, source: "cold-start")
-    }
-  }
-
-  /// Tries every key the gray backend might use for the destination URL.
-  /// Mirrors the Dart-side `_extractUrl` in `cloud_push_client.dart` so a
-  /// payload that opens correctly in foreground/background also opens on
-  /// cold start.
-  static func extractUrl(from userInfo: [AnyHashable: Any]) -> String? {
-    let candidates: [String] = ["url", "link", "target", "deeplink", "deep_link"]
-
-    func scan(_ map: [AnyHashable: Any]) -> String? {
-      for key in candidates {
-        if let raw = map[key] as? String,
-           !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        if let response = connectionOptions.notificationResponse,
+           let url = SceneDelegate.extractUrl(
+               from: response.notification.request.content.userInfo
+           )
         {
-          return raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            SceneDelegate.persist(url: url)
         }
-      }
-      return nil
     }
 
-    if let direct = scan(userInfo) { return direct }
-    if let nested = userInfo["payload"] as? [AnyHashable: Any] {
-      return scan(nested)
+    override func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        super.scene(scene, continue: userActivity)
     }
-    return nil
-  }
 
-  static func persist(url: String, source: String) {
-    NSLog("[GR.NATIVE] cold-start url captured (\(source)) -> \(url)")
-    let defaults = UserDefaults.standard
-    defaults.set(url, forKey: coldStartUrlKey)
-    defaults.synchronize()
-  }
+    /// Checks every key the gray backend may use for the destination URL.
+    /// Priority order matches NotifyRelay._extractUrl() on the Dart side so
+    /// killed-app and live-app paths resolve identically.
+    static func extractUrl(from userInfo: [AnyHashable: Any]) -> String? {
+        let keys = ["url", "link", "target", "deeplink", "deep_link"]
+
+        NSLog("[DB.NATIVE] userInfo keys: %@",
+              userInfo.keys.map { "\($0)" }.joined(separator: ", "))
+        for (k, v) in userInfo {
+            NSLog("[DB.NATIVE] userInfo[\(k)] = \(v)")
+        }
+
+        func scan(_ map: [AnyHashable: Any]) -> String? {
+            for key in keys {
+                if let raw = map[key] as? String,
+                   !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    NSLog("[DB.NATIVE] found url via key '\(key)': %@", raw)
+                    return raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                }
+            }
+            return nil
+        }
+
+        // 1. Direct top-level keys (FCM flattens data payload into userInfo)
+        if let direct = scan(userInfo) { return direct }
+
+        // 2. Nested "data" dict
+        if let nested = userInfo["data"] as? [AnyHashable: Any] {
+            NSLog("[DB.NATIVE] scanning nested 'data' dict")
+            if let url = scan(nested) { return url }
+        }
+
+        // 3. Nested "payload" dict
+        if let nested = userInfo["payload"] as? [AnyHashable: Any] {
+            NSLog("[DB.NATIVE] scanning nested 'payload' dict")
+            if let url = scan(nested) { return url }
+        }
+
+        NSLog("[DB.NATIVE] no url found in userInfo")
+        return nil
+    }
+
+    static func persist(url: String) {
+        NSLog("[DB.NATIVE] cold-start tap url -> %@", url)
+        let d = UserDefaults.standard
+        d.set(url, forKey: tapUrlKey)
+        d.synchronize()
+    }
 }
