@@ -135,6 +135,19 @@ class BallSkin {
       glowRadius: 18,
       price: 50000000,
     ),
+    BallSkin(
+      id: 'fire',
+      name: 'Blaze',
+      tier: SkinGrade.epic,
+      assetPath: MediaPaths.fireSphere,
+      primaryColor: Color(0xFFFF7043),
+      secondaryColor: Color(0xFFDD2C00),
+      particleDensity: 18,
+      particleLifespan: 1.1,
+      particleSpeed: 90,
+      glowRadius: 14,
+      price: 20000000,
+    ),
   ];
 
   static BallSkin getById(String id) {

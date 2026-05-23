@@ -9,13 +9,18 @@ class MediaLib {
   static const String purpleSphere = 'assets/game_assets/purple_sphere_asset.webp';
 
   // Circles / markers
-  static const String circleWithSkull = 'assets/game_assets/circle_with_skull_inside.webp';
+  static const String circleWithSkull =
+      'assets/game_assets/circle_with_skull_inside.webp';
 
   // Logo
-  static const String logo = 'assets/logo_options/logo.jpg';
+  static const String logo = 'assets/Logo_white.png';
 
   static const List<String> allImages = [
-    blueSphere, greenSphere, yellowSphere, redSphere, purpleSphere,
+    blueSphere,
+    greenSphere,
+    yellowSphere,
+    redSphere,
+    purpleSphere,
     circleWithSkull,
     logo,
   ];

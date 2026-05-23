@@ -8,7 +8,7 @@ import 'web_client.dart';
 import 'app_storage.dart';
 
 const String pushChannelId = 'gr_priority_alerts';
-const String pushChannelLabel = 'BounceBall 2 Alerts';
+const String pushChannelLabel = 'Drop Ball Alerts';
 const String pushIconRes = '@drawable/ic_notification';
 
 @pragma('vm:entry-point')

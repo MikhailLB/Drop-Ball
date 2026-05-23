@@ -8,11 +8,10 @@ import 'services/app_storage.dart';
 import 'services/net_checker.dart';
 
 Future<void> _configureChrome() async {
+  // Start portrait-up; loading screen unlocks all orientations itself,
+  // then re-locks portrait when handing off to the game flow.
   await SystemChrome.setPreferredOrientations(const [
     DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
   ]);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

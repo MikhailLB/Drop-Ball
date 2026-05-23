@@ -89,7 +89,7 @@ class _PreloadScreenState extends State<PreloadScreen>
                   ),
                   const SizedBox(height: 20),
                   const Text(
-                    'BOUNCE BALL 2',
+                    'DROP BALL',
                     style: TextStyle(
                       color: Colors.cyanAccent,
                       fontSize: 28,

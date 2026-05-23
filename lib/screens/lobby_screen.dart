@@ -166,18 +166,20 @@ class _MainMenuScreenState extends State<MainMenuScreen>
               ),
             ),
             const SizedBox(height: 6),
-            Image.asset(MediaPaths.logo, width: 120, height: 120),
+            Image.asset(MediaPaths.logoWhite, width: 100, height: 100,
+                fit: BoxFit.contain),
             const SizedBox(height: 8),
-            const Text(
-              'BOUNCEBALL 2',
-              style: TextStyle(
-                color: Colors.cyanAccent,
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 6,
-                shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)],
-              ),
-            ),
+            Image.asset(MediaPaths.logoName, height: 44, fit: BoxFit.contain,
+                errorBuilder: (context2, err2, stack2) => const Text(
+                  'DROP BALL',
+                  style: TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4,
+                    shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)],
+                  ),
+                )),
             const SizedBox(height: 8),
             Text(
               'BALANCE: ${BallSkin.formatPrice(_balance)}',

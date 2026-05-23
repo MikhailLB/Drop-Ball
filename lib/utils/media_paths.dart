@@ -1,59 +1,77 @@
 class MediaPaths {
   MediaPaths._();
 
-  // Skins
+  // Sphere skins
   static const String blueSphere = 'assets/game_assets/blue_sphere_asset.webp';
-  static const String groundSphere = 'assets/game_assets/ground_sphere_asset.webp';
-  static const String greenSphere = 'assets/game_assets/green_sphere_asset.webp';
+  static const String groundSphere =
+      'assets/game_assets/ground_sphere_asset.webp';
+  static const String greenSphere =
+      'assets/game_assets/green_sphere_asset.webp';
   static const String aquaSphere = 'assets/game_assets/aqua_sphere_asset.webp';
   static const String airSphere = 'assets/game_assets/air_sphere_asset.webp';
-  static const String yellowSphere = 'assets/game_assets/yellow_sphere_asset.webp';
+  static const String yellowSphere =
+      'assets/game_assets/yellow_sphere_asset.webp';
   static const String redSphere = 'assets/game_assets/red_sphere_asset.webp';
-  static const String purpleSphere = 'assets/game_assets/purple_sphere_asset.webp';
+  static const String purpleSphere =
+      'assets/game_assets/purple_sphere_asset.webp';
+  static const String fireSphere =
+      'assets/game_assets/fire_sphere_asset.webp';
 
-  // Pipes
-  static const String greenPipe = 'assets/game_assets/green_pipe.webp';
-  static const String redPipeWithSkull = 'assets/game_assets/red_pipe_with_skull.webp';
-  static const String redPipeWithoutSkull = 'assets/game_assets/red_pipe_without_skull.webp';
+  // Skull marker
+  static const String circleWithSkull =
+      'assets/game_assets/circle_with_skull_inside.webp';
 
-  // Circles / markers
-  static const String greenCircle = 'assets/game_assets/green_circle.webp';
-  static const String circleWith2x = 'assets/game_assets/circle_with_2x_inside.webp';
-  static const String circleWithSkull = 'assets/game_assets/circle_with_skull_inside.webp';
-  static const String asset2x = 'assets/game_assets/2x_asset.webp';
+  // Loading bar frames
+  static const String loadingBarEmpty = 'assets/Loading/loading_bar_empty.webp';
+  static const String loadingBarHalf = 'assets/Loading/loading_bar_half.webp';
+  static const String loadingBarAlmost =
+      'assets/Loading/loading_bar_almost.webp';
+  static const String loadingBarFull = 'assets/Loading/loading_bar_full.webp';
 
-  // Spikes
-  static const String blueSpike = 'assets/game_assets/blue_spike.webp';
-  static const String redSpike = 'assets/game_assets/red_spike.webp';
+  // Loading screen videos
+  static const String loadingVideoPortrait =
+      'assets/Loading/9x16_Loading_Screen.mp4';
+  static const String loadingVideoLandscape =
+      'assets/Loading/16x9_Loading_Screen.mp4';
 
-  // Background
-  static const String background = 'assets/game_assets/backround_asset.webp';
+  // Logos
+  static const String logoWhite = 'assets/Logo_white.png';
+  static const String logoName = 'assets/Logo_name.png';
+  static const String logoGray = 'assets/Logo_gray.png';
 
-  // Loading screen
-  static const String loadingBarHalf = 'assets/loading_screen/loading_bar_half.webp';
-  static const String loadingBarAlmostFull = 'assets/loading_screen/loading_bar_almostf.webp';
-  static const String loadingBarFull = 'assets/loading_screen/loading_bar_full.webp';
-  static const String loadingBarEmpty = 'assets/loading_screen/loading_bar_empty.webp';
+  // No-WiFi screens
+  static const String noWifiPortrait = 'assets/NoWifi/9x16_NoWifi_Screen.webp';
+  static const String noWifiLandscape =
+      'assets/NoWifi/16x9_NoWifi_Screen.webp';
 
-  // Logo
-  static const String logo = 'assets/logo_options/logo.jpg';
+  // Notification screens
+  static const String notifPortrait =
+      'assets/Notifications/9x16_Notifications.webp';
+  static const String notifLandscape =
+      'assets/Notifications/16x9_Notifications.webp';
 
-  // No WiFi
-  static const String noWifi = 'assets/NO WIFI/no_wifi_screen.webp';
-  static const String noWifiHorizontal = 'assets/NO WIFI/no_wifi_screen_horizontal.webp';
-
-  // Ad screens
-  static const String nfVertical = 'assets/add_screens/nf_vertical_screen.mp4';
-  static const String nfHorizontal = 'assets/add_screens/nf_horizontal_screen.mp4';
-
+  // All preloadable images (excludes videos)
   static const List<String> allImages = [
-    blueSphere, groundSphere, greenSphere, aquaSphere, airSphere,
-    yellowSphere, redSphere, purpleSphere,
-    greenPipe, redPipeWithSkull, redPipeWithoutSkull,
-    greenCircle, circleWith2x, circleWithSkull, asset2x,
-    blueSpike, redSpike,
-    background,
-    loadingBarHalf, loadingBarAlmostFull, loadingBarFull, loadingBarEmpty,
-    logo, noWifi, noWifiHorizontal,
+    blueSphere,
+    groundSphere,
+    greenSphere,
+    aquaSphere,
+    airSphere,
+    yellowSphere,
+    redSphere,
+    purpleSphere,
+    fireSphere,
+    circleWithSkull,
+    loadingBarEmpty,
+    loadingBarHalf,
+    loadingBarAlmost,
+    loadingBarFull,
+    logoWhite,
+    logoName,
+    logoGray,
+    noWifiPortrait,
+    noWifiLandscape,
+    notifPortrait,
+    notifLandscape,
   ];
 }

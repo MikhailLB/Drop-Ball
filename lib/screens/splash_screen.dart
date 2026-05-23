@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player/video_player.dart';
 import '../models/app_mode.dart';
 import '../services/startup.dart';
 import '../services/tracker.dart';
@@ -15,7 +16,6 @@ import 'flow_screen.dart';
 import 'offline_screen.dart';
 import 'notif_screen.dart';
 import 'browser_host.dart' deferred as host;
-import 'painters/bar_painter.dart';
 
 enum _ProgressStage { start, midway, filled }
 
@@ -44,8 +44,10 @@ class _SplashScreenState extends State<SplashScreen>
   bool _leaving = false;
 
   late final AnimationController _barCtrl;
-  late final AnimationController _glowCtrl;
-  late final AnimationController _dotsCtrl;
+
+  VideoPlayerController? _videoCtrl;
+  bool _videoReady = false;
+  Orientation? _videoOrientation;
 
   @override
   void initState() {
@@ -56,16 +58,6 @@ class _SplashScreenState extends State<SplashScreen>
       duration: const Duration(milliseconds: 800),
     );
 
-    _glowCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-
-    _dotsCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-
     SystemChrome.setPreferredOrientations(const [
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -73,6 +65,41 @@ class _SplashScreenState extends State<SplashScreen>
       DeviceOrientation.landscapeRight,
     ]);
     _kickoff();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final orientation = MediaQuery.of(context).orientation;
+    if (orientation != _videoOrientation) {
+      _videoOrientation = orientation;
+      _loadVideo(orientation);
+    }
+  }
+
+  Future<void> _loadVideo(Orientation orientation) async {
+    final path = orientation == Orientation.landscape
+        ? MediaPaths.loadingVideoLandscape
+        : MediaPaths.loadingVideoPortrait;
+    final next = VideoPlayerController.asset(path);
+    try {
+      await next.initialize();
+      next.setLooping(true);
+      next.setVolume(0);
+      next.play();
+      if (!mounted) {
+        next.dispose();
+        return;
+      }
+      final old = _videoCtrl;
+      setState(() {
+        _videoCtrl = next;
+        _videoReady = true;
+      });
+      await old?.dispose();
+    } catch (_) {
+      next.dispose();
+    }
   }
 
   Future<void> _kickoff() async {
@@ -425,8 +452,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _barCtrl.dispose();
-    _glowCtrl.dispose();
-    _dotsCtrl.dispose();
+    _videoCtrl?.dispose();
     widget.push.onTokenRotate = null;
     super.dispose();
   }
@@ -453,137 +479,130 @@ class _SplashScreenState extends State<SplashScreen>
 
   Widget _buildBrandedSplash(bool landscape, MediaQueryData media) {
     final shortest = media.size.shortestSide;
-    final logoSize = landscape ? shortest * 0.22 : shortest * 0.42;
-    final titleSize = landscape ? 18.0 : 30.0;
-    final loadingSize = landscape ? 12.0 : 17.0;
+    final logoSize = landscape ? shortest * 0.18 : shortest * 0.36;
 
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.center,
-          radius: 1.1,
-          colors: [Color(0xFF17134A), Color(0xFF070714), Colors.black],
-        ),
-      ),
-      child: Align(
-        alignment: landscape
-            ? const Alignment(0, -0.55)
-            : const Alignment(0, -0.2),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Image.asset(
-              MediaPaths.logo,
-              width: logoSize,
-              height: logoSize,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) =>
-                  SizedBox(width: logoSize, height: logoSize),
-            ),
-            SizedBox(height: landscape ? 4 : 18),
-            Text(
-              'BOUNCEBALL 2',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.cyanAccent,
-                fontSize: titleSize,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 4,
-                shadows: const [
-                  Shadow(color: Colors.cyanAccent, blurRadius: 18),
-                ],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Video background
+        if (_videoReady && _videoCtrl != null)
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _videoCtrl!.value.size.width,
+                height: _videoCtrl!.value.size.height,
+                child: VideoPlayer(_videoCtrl!),
               ),
             ),
-            SizedBox(height: landscape ? 4 : 12),
-            _buildAnimatedLoadingText(loadingSize),
-          ],
+          )
+        else
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment.center,
+                radius: 1.1,
+                colors: [Color(0xFF17134A), Color(0xFF070714), Colors.black],
+              ),
+            ),
+          ),
+
+        // Gradient overlay at bottom so bar is readable
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.55),
+              ],
+              stops: const [0.55, 1.0],
+            ),
+          ),
         ),
-      ),
+
+        // Centered logo + name
+        Align(
+          alignment: landscape
+              ? const Alignment(0, -0.5)
+              : const Alignment(0, -0.25),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                MediaPaths.logoWhite,
+                width: logoSize,
+                height: logoSize,
+                fit: BoxFit.contain,
+                errorBuilder: (ctx, e, s) =>
+                    SizedBox(width: logoSize, height: logoSize),
+              ),
+              SizedBox(height: landscape ? 6 : 14),
+              Image.asset(
+                MediaPaths.logoName,
+                height: landscape ? 28.0 : 44.0,
+                fit: BoxFit.contain,
+                errorBuilder: (ctx, e, s) => Text(
+                  'DROP BALL',
+                  style: TextStyle(
+                    color: Colors.cyanAccent,
+                    fontSize: landscape ? 18.0 : 28.0,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    shadows: const [
+                      Shadow(color: Colors.cyanAccent, blurRadius: 18),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildAnimatedLoadingText(double fontSize) {
-    return AnimatedBuilder(
-      animation: _dotsCtrl,
-      builder: (context, _) {
-        final phase = (_dotsCtrl.value * 4).floor() % 4;
-        final dots = '.' * phase;
-        final hidden = '.' * (3 - phase);
-        return Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'LOADING',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.86),
-                fontSize: fontSize,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 4,
-              ),
-            ),
-            SizedBox(
-              width: fontSize * 2,
-              child: Text.rich(
-                TextSpan(children: [
-                  TextSpan(
-                    text: dots,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.86),
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                  TextSpan(
-                    text: hidden,
-                    style: TextStyle(
-                      color: Colors.transparent,
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
+
+  static const _splashBarAssets = [
+    MediaPaths.loadingBarEmpty,
+    MediaPaths.loadingBarHalf,
+    MediaPaths.loadingBarAlmost,
+    MediaPaths.loadingBarFull,
+  ];
 
   Widget _buildProgressBar({
     required bool landscape,
     required MediaQueryData media,
   }) {
-    final bottom = media.padding.bottom + (landscape ? 14.0 : 32.0);
-    final barWidth = landscape
-        ? (media.size.width * 0.25).clamp(160.0, 260.0)
-        : (media.size.width * 0.6).clamp(200.0, 300.0);
-    const barHeight = 14.0;
-    const radius = 7.0;
-
     return Positioned(
       left: 0,
       right: 0,
-      bottom: bottom,
+      bottom: 30,
       child: Center(
         child: AnimatedBuilder(
-          animation: Listenable.merge([_barCtrl, _glowCtrl]),
+          animation: _barCtrl,
           builder: (context, _) {
-            final progress = _barCtrl.value;
-            final glowPulse = 0.4 + 0.6 * _glowCtrl.value;
-
-            return SizedBox(
-              width: barWidth + 8,
-              height: barHeight + 8,
-              child: CustomPaint(
-                painter: BarPainter(
-                  progress: progress,
-                  glowIntensity: glowPulse,
-                  barWidth: barWidth,
-                  barHeight: barHeight,
-                  radius: radius,
+            final v = _barCtrl.value;
+            final idx = v < 0.30
+                ? 0
+                : v < 0.60
+                    ? 1
+                    : v < 0.88
+                        ? 2
+                        : 3;
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 350),
+              transitionBuilder: (child, anim) =>
+                  FadeTransition(opacity: anim, child: child),
+              child: Image.asset(
+                _splashBarAssets[idx],
+                key: ValueKey(idx),
+                width: 260,
+                fit: BoxFit.contain,
+                errorBuilder: (ctx, e, s) => const SizedBox(
+                  width: 260,
+                  height: 20,
                 ),
               ),
             );

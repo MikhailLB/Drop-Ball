@@ -75,7 +75,7 @@ class _OfflineScreenState extends State<OfflineScreen>
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final landscape = mq.orientation == Orientation.landscape;
-    final bgAsset = landscape ? MediaPaths.noWifiHorizontal : MediaPaths.noWifi;
+    final bgAsset = landscape ? MediaPaths.noWifiLandscape : MediaPaths.noWifiPortrait;
 
     return Scaffold(
       backgroundColor: Colors.black,

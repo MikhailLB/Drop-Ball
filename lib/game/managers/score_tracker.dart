@@ -3,10 +3,12 @@ import '../../utils/game_config.dart';
 
 class ScoreTracker {
   int _pendingCoins = 0;
+  int _sessionScore = 0;
   int _balance = 0;
   int _goldCoinsThisDrop = 0;
 
   int get pendingCoins => _pendingCoins;
+  int get sessionScore => _sessionScore;
   int get balance => _balance;
   int get goldCoinsThisDrop => _goldCoinsThisDrop;
 
@@ -25,24 +27,35 @@ class ScoreTracker {
   }
 
   void processLanding(double multiplier) {
-    _pendingCoins += _goldCoinsThisDrop + GameConfig.baseDropCoins;
-    _pendingCoins = (_pendingCoins * multiplier).round();
+    final earned = ((_goldCoinsThisDrop + GameConfig.baseDropCoins) * multiplier).round();
+    _pendingCoins += earned;
     _goldCoinsThisDrop = 0;
   }
 
+  /// Called on skull hit — keeps 50% of pending coins but adds nothing to session.
+  int skullPenalty() {
+    final lost = (_pendingCoins * 0.5).round();
+    _pendingCoins = _pendingCoins - lost;
+    _goldCoinsThisDrop = 0;
+    return lost;
+  }
+
+  /// Bank all pending coins into the session score and balance.
   int collect() {
     final amount = _pendingCoins;
-    _balance += _pendingCoins;
+    _sessionScore += amount;
+    _balance += amount;
     _pendingCoins = 0;
     _saveBalance();
     return amount;
   }
 
   int collectWithBonus() {
-    _pendingCoins *= 2;
+    _pendingCoins = (_pendingCoins * 1.5).round();
     return collect();
   }
 
+  /// Hard burn — lose everything (e.g. rage quit / override).
   int burn() {
     final amount = _pendingCoins;
     _pendingCoins = 0;
@@ -52,6 +65,7 @@ class ScoreTracker {
 
   void resetForNewGame() {
     _pendingCoins = 0;
+    _sessionScore = 0;
     _goldCoinsThisDrop = 0;
   }
 

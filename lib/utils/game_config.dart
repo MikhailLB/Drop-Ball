@@ -1,10 +1,5 @@
-<<<<<<<< HEAD:lib/utils/game_config.dart
 class GameConfig {
   GameConfig._();
-========
-class PhysicsCfg {
-  PhysicsCfg._();
->>>>>>>> white-ios:lib/utils/physics_cfg.dart
 
   static const double ballRadius = 12.0;
   static const double pegRadius = 7.0;

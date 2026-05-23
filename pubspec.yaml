@@ -1,5 +1,5 @@
-name: bounce_ball_two
-description: "Bounce Ball 2 — neon plinko ball game with risk and reward."
+name: drop_ball
+description: "Drop Ball — elemental sphere drop game with levels."
 publish_to: 'none'
 version: 1.0.2+20
 
@@ -58,9 +58,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/logo_options/logo.jpg"
+  image_path: "assets/Logo_white.png"
   adaptive_icon_background: "#000000"
-  adaptive_icon_foreground: "assets/logo_options/logo.jpg"
+  adaptive_icon_foreground: "assets/Logo_white.png"
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -75,4 +75,9 @@ flutter:
 
   assets:
     - assets/game_assets/
-    - assets/logo_options/
+    - assets/Loading/
+    - assets/NoWifi/
+    - assets/Notifications/
+    - assets/Logo_white.png
+    - assets/Logo_name.png
+    - assets/Logo_gray.png

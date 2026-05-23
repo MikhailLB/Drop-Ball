@@ -1,18 +1,23 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../game/bounce_game.dart';
+import '../game/models/level_config.dart';
 import '../models/ball_skin.dart';
-import '../overlays/game_over_overlay.dart';
-import '../overlays/pause_overlay.dart';
+import '../overlays/round_end_view.dart';
+import '../overlays/paused_view.dart';
 
 class GameScreen extends StatefulWidget {
   final BallSkin skin;
+  final LevelConfig levelConfig;
   final VoidCallback onMainMenu;
+  final void Function(int levelNumber)? onNextLevel;
 
   const GameScreen({
     super.key,
     required this.skin,
+    required this.levelConfig,
     required this.onMainMenu,
+    this.onNextLevel,
   });
 
   @override
@@ -25,7 +30,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    _game = BounceGame(skin: widget.skin);
+    _game = BounceGame(skin: widget.skin, levelConfig: widget.levelConfig);
   }
 
   void _goToMainMenu() {
@@ -33,6 +38,13 @@ class _GameScreenState extends State<GameScreen> {
     _game.overlays.remove('GameOver');
     if (_game.paused) _game.resumeEngine();
     widget.onMainMenu();
+  }
+
+  void _goToNextLevel() {
+    _game.overlays.remove('GameOver');
+    if (_game.paused) _game.resumeEngine();
+    final next = widget.levelConfig.number + 1;
+    widget.onNextLevel?.call(next);
   }
 
   @override
@@ -50,12 +62,13 @@ class _GameScreenState extends State<GameScreen> {
               'GameOver': (context, game) => GameOverOverlay(
                     game: game as BounceGame,
                     onMainMenu: _goToMainMenu,
+                    onNextLevel: _goToNextLevel,
                   ),
             },
           ),
           // Pause button
           Positioned(
-            top: 40,
+            top: 96,
             right: 16,
             child: GestureDetector(
               onTap: () => _game.togglePause(),
@@ -73,7 +86,7 @@ class _GameScreenState extends State<GameScreen> {
           ),
           // COLLECT button
           Positioned(
-            bottom: 10,
+            bottom: 16,
             left: 0,
             right: 0,
             child: Center(
@@ -98,13 +111,16 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                         ],
                       ),
-                      child: Text(
-                        'COLLECT  ${_game.scoreTracker.pendingCoins}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
+                      child: ValueListenableBuilder<bool>(
+                        valueListenable: _game.collectAvailable,
+                        builder: (context2, val2, child2) => Text(
+                          'COLLECT  ${_game.scoreTracker.pendingCoins}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 2,
+                          ),
                         ),
                       ),
                     ),

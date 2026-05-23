@@ -28,7 +28,7 @@ const _cloudProjectIdIos = [
 
 abstract final class AppConfig {
   static const packageName = 'com.gsteamgsgames.gravityrush';
-  static const displayTitle = 'BounceBall 2';
+  static const displayTitle = 'Drop Ball';
   static const iosAppId = '6763416861';
 
   /// AppsFlyer expects the iOS store identifier prefixed with `id`,

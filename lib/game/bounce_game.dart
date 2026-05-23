@@ -8,15 +8,17 @@ import 'components/board_layout.dart';
 import 'components/game_ball.dart';
 import 'managers/level_controller.dart';
 import 'managers/score_tracker.dart';
+import 'models/level_config.dart';
 import 'sprite_registry.dart';
 import 'ui/game_hud.dart';
 
-enum GameEndReason { died, collected, won }
+enum GameEndReason { skullDied, levelComplete, collected }
 
 class BounceGame extends FlameGame with PanDetector {
   final BallSkin skin;
+  final LevelConfig levelConfig;
   final ScoreTracker scoreTracker = ScoreTracker();
-  final LevelController levelController = LevelController();
+  late final LevelController levelController;
   final SpriteRegistry spriteRegistry = SpriteRegistry();
 
   late BoardLayout _board;
@@ -24,7 +26,7 @@ class BounceGame extends FlameGame with PanDetector {
   GameBall? _activeBall;
   BallTrail? _trail;
 
-  bool _isGameOver = false;
+  bool _isRoundOver = false;
   bool _waitingForTap = true;
   double _cooldownTimer = 0;
   bool _inCooldown = false;
@@ -34,8 +36,9 @@ class BounceGame extends FlameGame with PanDetector {
 
   final ValueNotifier<bool> collectAvailable = ValueNotifier(false);
 
-  BounceGame({required this.skin}) {
+  BounceGame({required this.skin, required this.levelConfig}) {
     images.prefix = 'assets/';
+    levelController = LevelController(config: levelConfig);
   }
 
   @override
@@ -45,11 +48,11 @@ class BounceGame extends FlameGame with PanDetector {
   Future<void> onLoad() async {
     await spriteRegistry.loadAll(this);
     await scoreTracker.loadBalance();
-    await _startGame();
+    _startGame();
   }
 
-  Future<void> _startGame() async {
-    _isGameOver = false;
+  void _startGame() {
+    _isRoundOver = false;
     _waitingForTap = true;
     _inCooldown = false;
     endReason = null;
@@ -57,13 +60,15 @@ class BounceGame extends FlameGame with PanDetector {
     scoreTracker.resetForNewGame();
     levelController.reset();
 
-    _board = BoardLayout();
+    _board = BoardLayout(levelConfig: levelConfig);
     add(_board);
 
     _trail = BallTrail(skin: skin);
     add(_trail!);
 
-    add(CoinsDisplay());
+    add(ScoreDisplay());
+    add(LivesDisplay());
+    add(LevelLabel());
     add(PegCounter());
     add(HintText());
     _updateCollect();
@@ -71,12 +76,12 @@ class BounceGame extends FlameGame with PanDetector {
 
   void _updateCollect() {
     collectAvailable.value =
-        _waitingForTap && scoreTracker.pendingCoins > 0 && !_isGameOver;
+        _waitingForTap && scoreTracker.pendingCoins > 0 && !_isRoundOver;
   }
 
   @override
   void onPanDown(DragDownInfo info) {
-    if (_isGameOver || !_waitingForTap || _inCooldown || paused) return;
+    if (_isRoundOver || !_waitingForTap || _inCooldown || paused) return;
 
     _waitingForTap = false;
     collectAvailable.value = false;
@@ -98,7 +103,7 @@ class BounceGame extends FlameGame with PanDetector {
 
   @override
   void onPanUpdate(DragUpdateInfo info) {
-    if (_activeBall != null && !_isGameOver && !paused) {
+    if (_activeBall != null && !_isRoundOver && !paused) {
       _activeBall!.applyNudge(info.delta.global.x);
     }
   }
@@ -141,7 +146,7 @@ class BounceGame extends FlameGame with PanDetector {
     final slotIndex = _board.getSlotIndex(x);
 
     if (_board.isSkullSlot(slotIndex)) {
-      _die();
+      _hitSkull();
       return;
     }
 
@@ -149,7 +154,7 @@ class BounceGame extends FlameGame with PanDetector {
     scoreTracker.processLanding(multi);
 
     add(ScorePopup(
-      text: '×$multi',
+      text: '×${multi.toStringAsFixed(1)}',
       position: Vector2(x, _board.slotsY - 20),
       color: const Color(0xFF00FF88),
     ));
@@ -157,8 +162,10 @@ class BounceGame extends FlameGame with PanDetector {
     levelController.onDrop();
     _board.generateSlots();
 
-    if (_board.allWhitePegsHit) {
-      _win();
+    // Auto-collect pending and check win condition
+    final autoCollected = scoreTracker.collect();
+    if (scoreTracker.sessionScore >= levelConfig.targetScore) {
+      _winLevel(autoCollected);
       return;
     }
 
@@ -166,32 +173,60 @@ class BounceGame extends FlameGame with PanDetector {
     _cooldownTimer = 0.5;
   }
 
-  void _die() {
-    endReason = GameEndReason.died;
-    lastAmount = scoreTracker.burn();
-    _isGameOver = true;
+  void _hitSkull() {
+    levelController.loseLife();
+    final lost = scoreTracker.skullPenalty();
+
+    add(ScorePopup(
+      text: lost > 0 ? '-$lost' : '💀',
+      position: Vector2(size.x / 2, size.y * 0.5),
+      color: const Color(0xFFFF2244),
+    ));
+
+    if (!levelController.hasLivesLeft) {
+      _failLevel();
+      return;
+    }
+
+    _board.generateSlots();
+    _inCooldown = true;
+    _cooldownTimer = 0.8;
+  }
+
+  void _winLevel(int banked) {
+    endReason = GameEndReason.levelComplete;
+    lastAmount = banked;
+    _isRoundOver = true;
     collectAvailable.value = false;
     pauseEngine();
     overlays.add('GameOver');
   }
 
-  void _win() {
-    endReason = GameEndReason.won;
-    lastAmount = scoreTracker.collectWithBonus();
-    _isGameOver = true;
+  void _failLevel() {
+    endReason = GameEndReason.skullDied;
+    lastAmount = scoreTracker.burn();
+    _isRoundOver = true;
     collectAvailable.value = false;
     pauseEngine();
     overlays.add('GameOver');
   }
 
   void collectCoins() {
-    if (_isGameOver || scoreTracker.pendingCoins <= 0) return;
+    if (_isRoundOver || scoreTracker.pendingCoins <= 0) return;
     endReason = GameEndReason.collected;
     lastAmount = scoreTracker.collect();
-    _isGameOver = true;
+    _isRoundOver = true;
     collectAvailable.value = false;
-    pauseEngine();
-    overlays.add('GameOver');
+
+    if (scoreTracker.sessionScore >= levelConfig.targetScore) {
+      pauseEngine();
+      overlays.add('GameOver');
+    } else {
+      // Still have coins but not enough — just resume
+      _isRoundOver = false;
+      _inCooldown = true;
+      _cooldownTimer = 0.3;
+    }
   }
 
   void restart() {
@@ -203,7 +238,7 @@ class BounceGame extends FlameGame with PanDetector {
   }
 
   void togglePause() {
-    if (_isGameOver) return;
+    if (_isRoundOver) return;
     if (paused) {
       resumeEngine();
       overlays.remove('Pause');
@@ -216,7 +251,7 @@ class BounceGame extends FlameGame with PanDetector {
   @override
   void update(double dt) {
     super.update(dt);
-    if (_isGameOver) return;
+    if (_isRoundOver) return;
 
     if (_inCooldown) {
       _cooldownTimer -= dt;

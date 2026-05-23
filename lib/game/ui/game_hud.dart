@@ -42,16 +42,15 @@ class BallTrail extends Component with HasGameReference<BounceGame> {
   }
 }
 
-class CoinsDisplay extends TextComponent
-    with HasGameReference<BounceGame> {
-  CoinsDisplay()
+class ScoreDisplay extends TextComponent with HasGameReference<BounceGame> {
+  ScoreDisplay()
       : super(
           anchor: Anchor.topCenter,
           priority: 100,
           textRenderer: TextPaint(
             style: const TextStyle(
               color: Color(0xFFFFFFFF),
-              fontSize: 30,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               shadows: [
                 Shadow(
@@ -65,18 +64,75 @@ class CoinsDisplay extends TextComponent
 
   @override
   void onLoad() {
-    position = Vector2(game.size.x / 2, 32);
+    position = Vector2(game.size.x / 2, 28);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    text = 'COINS: ${game.scoreTracker.pendingCoins}';
+    final session = game.scoreTracker.sessionScore;
+    final target = game.levelController.config.targetScore;
+    final pending = game.scoreTracker.pendingCoins;
+    text = '$session / $target${pending > 0 ? '  (+$pending)' : ''}';
   }
 }
 
-class PegCounter extends TextComponent
-    with HasGameReference<BounceGame> {
+// Keep legacy alias so existing references don't break
+typedef CoinsDisplay = ScoreDisplay;
+
+class LivesDisplay extends TextComponent with HasGameReference<BounceGame> {
+  LivesDisplay()
+      : super(
+          anchor: Anchor.topLeft,
+          priority: 100,
+          textRenderer: TextPaint(
+            style: const TextStyle(
+              color: Color(0xFFFF6B6B),
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              shadows: [
+                Shadow(color: Color(0xAAFF0000), blurRadius: 6),
+              ],
+            ),
+          ),
+        );
+
+  @override
+  void onLoad() {
+    position = Vector2(12, 28);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    final lives = game.levelController.livesRemaining;
+    text = '♥' * lives;
+  }
+}
+
+class LevelLabel extends TextComponent with HasGameReference<BounceGame> {
+  LevelLabel()
+      : super(
+          anchor: Anchor.topRight,
+          priority: 100,
+          textRenderer: TextPaint(
+            style: const TextStyle(
+              color: Color(0xAAFFFFFF),
+              fontSize: 13,
+              letterSpacing: 1,
+            ),
+          ),
+        );
+
+  @override
+  void onLoad() {
+    position = Vector2(game.size.x - 12, 28);
+    final cfg = game.levelController.config;
+    text = 'LV ${cfg.number}';
+  }
+}
+
+class PegCounter extends TextComponent with HasGameReference<BounceGame> {
   PegCounter()
       : super(
           anchor: Anchor.topCenter,
@@ -84,14 +140,14 @@ class PegCounter extends TextComponent
           textRenderer: TextPaint(
             style: const TextStyle(
               color: Color(0xAAFFFFFF),
-              fontSize: 14,
+              fontSize: 13,
             ),
           ),
         );
 
   @override
   void onLoad() {
-    position = Vector2(game.size.x / 2, 66);
+    position = Vector2(game.size.x / 2, 58);
   }
 
   @override
@@ -107,7 +163,7 @@ class HintText extends TextComponent with HasGameReference<BounceGame> {
 
   HintText()
       : super(
-          text: '● HIT ALL WHITE PEGS ● DRAG TO STEER ●',
+          text: '● TAP TO DROP ● DRAG TO STEER ●',
           anchor: Anchor.center,
           priority: 100,
           textRenderer: TextPaint(
@@ -122,7 +178,7 @@ class HintText extends TextComponent with HasGameReference<BounceGame> {
   @override
   void onLoad() {
     _baseX = game.size.x / 2;
-    position = Vector2(_baseX, 88);
+    position = Vector2(_baseX, 78);
   }
 
   @override

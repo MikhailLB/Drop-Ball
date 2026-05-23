@@ -3,18 +3,13 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart' show TextStyle, FontWeight;
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
 import '../../utils/game_config.dart';
+import '../../game/models/level_config.dart';
 import '../bounce_game.dart';
 
-class BoardLayout extends PositionComponent
-    with HasGameReference<BounceGame> {
-========
-import '../../utils/physics_cfg.dart';
-import '../drop_game.dart';
+class BoardLayout extends PositionComponent with HasGameReference<BounceGame> {
+  final LevelConfig levelConfig;
 
-class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
->>>>>>>> white-ios:lib/game/components/pin_field.dart
   final List<Vector2> pegs = [];
   final List<Vector2> _basePegs = [];
   final List<bool> _isGold = [];
@@ -71,18 +66,16 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
     ),
   );
 
+  BoardLayout({required this.levelConfig});
+
   @override
   Future<void> onLoad() async {
     size = game.size;
     priority = 0;
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
-    _circleSkull = game.spriteRegistry.circleSkull;
-========
-    _skullIcon = game.spriteAssets.circleSkull;
->>>>>>>> white-ios:lib/game/components/pin_field.dart
+    _skullIcon = game.spriteRegistry.circleSkull;
     _buildLayout();
     _assignPegTypes();
-    buildSlots();
+    generateSlots();
   }
 
   void _buildLayout() {
@@ -94,7 +87,6 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
 
     final w = size.x;
     final h = size.y;
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
     final topY = h * GameConfig.boardTopFraction;
     final botY = h * GameConfig.boardBottomFraction;
     final boardH = botY - topY;
@@ -102,50 +94,27 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
     final usableW = w - 2 * margin;
 
     _actualPegRadius = GameConfig.pegRadius;
-    final colSpacing = usableW / (GameConfig.pegColsWide - 1);
-    final rowSpacing = boardH / (GameConfig.pegRows + 1);
+    final colsWide = levelConfig.pegColsWide;
+    final colsNarrow = colsWide - 1;
+    final colSpacing = usableW / (colsWide - 1);
+    final rowSpacing = boardH / (levelConfig.pegRows + 1);
 
-    for (int row = 0; row < GameConfig.pegRows; row++) {
+    for (int row = 0; row < levelConfig.pegRows; row++) {
       final y = topY + (row + 1) * rowSpacing;
       if (row.isEven) {
-        for (int col = 0; col < GameConfig.pegColsWide; col++) {
+        for (int col = 0; col < colsWide; col++) {
           _addPeg(Vector2(margin + col * colSpacing, y));
         }
       } else {
-        for (int col = 0; col < GameConfig.pegColsNarrow; col++) {
-========
-    final topY = h * PhysicsCfg.boardTopFraction;
-    final botY = h * PhysicsCfg.boardBottomFraction;
-    final boardH = botY - topY;
-    final margin = w * PhysicsCfg.boardMarginFraction;
-    final usableW = w - 2 * margin;
-
-    _actualPegRadius = PhysicsCfg.pegRadius;
-    final colSpacing = usableW / (PhysicsCfg.pegColsWide - 1);
-    final rowSpacing = boardH / (PhysicsCfg.pegRows + 1);
-
-    for (int row = 0; row < PhysicsCfg.pegRows; row++) {
-      final y = topY + (row + 1) * rowSpacing;
-      if (row.isEven) {
-        for (int col = 0; col < PhysicsCfg.pegColsWide; col++) {
-          _addPeg(Vector2(margin + col * colSpacing, y));
-        }
-      } else {
-        for (int col = 0; col < PhysicsCfg.pegColsNarrow; col++) {
->>>>>>>> white-ios:lib/game/components/pin_field.dart
+        for (int col = 0; col < colsNarrow; col++) {
           _addPeg(Vector2(margin + colSpacing / 2 + col * colSpacing, y));
         }
       }
     }
 
     _slotsY = botY + 10;
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
     _slotsBottom = _slotsY + h * GameConfig.slotHeightFraction;
     _slotWidth = w / GameConfig.numSlots;
-========
-    _slotsBottom = _slotsY + h * PhysicsCfg.slotHeightFraction;
-    _slotWidth = w / PhysicsCfg.numSlots;
->>>>>>>> white-ios:lib/game/components/pin_field.dart
   }
 
   void _addPeg(Vector2 pos) {
@@ -159,11 +128,7 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
   void _assignPegTypes() {
     final rng = Random();
     for (int i = 0; i < pegs.length; i++) {
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
       _isGold[i] = rng.nextDouble() < GameConfig.goldPegChance;
-========
-      _isGold[i] = rng.nextDouble() < PhysicsCfg.goldPegChance;
->>>>>>>> white-ios:lib/game/components/pin_field.dart
       _isHit[i] = false;
     }
   }
@@ -183,29 +148,22 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
   int onPegHit(int index) {
     if (index < 0 || index >= pegs.length || _isHit[index]) return 0;
     _isHit[index] = true;
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
     return _isGold[index] ? GameConfig.goldPegBonus : 0;
   }
 
   void generateSlots() {
-    final dm = game.levelController;
-    slotMultipliers = dm.generateMultipliers();
     final rng = Random();
-    int placed = 0;
-    while (placed < dm.skullCount && placed < GameConfig.numSlots - 1) {
-      final idx = rng.nextInt(GameConfig.numSlots);
-========
-    return _isGold[index] ? PhysicsCfg.goldPegBonus : 0;
-  }
+    slotMultipliers = List.generate(GameConfig.numSlots, (_) {
+      final v = levelConfig.minMultiplier +
+          rng.nextDouble() *
+              (levelConfig.maxMultiplier - levelConfig.minMultiplier);
+      return double.parse(v.toStringAsFixed(1));
+    });
 
-  void buildSlots() {
-    final rs = game.roundScaler;
-    slotMultipliers = rs.buildMultipliers();
-    final rng = Random();
     int placed = 0;
-    while (placed < rs.skullCount && placed < PhysicsCfg.numSlots - 1) {
-      final idx = rng.nextInt(PhysicsCfg.numSlots);
->>>>>>>> white-ios:lib/game/components/pin_field.dart
+    while (placed < levelConfig.skullCount &&
+        placed < GameConfig.numSlots - 1) {
+      final idx = rng.nextInt(GameConfig.numSlots);
       if (slotMultipliers[idx] > 0) {
         slotMultipliers[idx] = 0;
         placed++;
@@ -217,11 +175,7 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
   double getMultiplier(int index) => slotMultipliers[index];
 
   int getSlotIndex(double x) {
-<<<<<<<< HEAD:lib/game/components/board_layout.dart
     return (x / _slotWidth).floor().clamp(0, GameConfig.numSlots - 1);
-========
-    return (x / _slotWidth).floor().clamp(0, PhysicsCfg.numSlots - 1);
->>>>>>>> white-ios:lib/game/components/pin_field.dart
   }
 
   @override
@@ -230,7 +184,8 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
     _time += dt;
     for (int i = 0; i < pegs.length; i++) {
       if (_isMoving[i]) {
-        pegs[i].x = _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
+        pegs[i].x =
+            _basePegs[i].x + sin(_time * 2.0 + i * 0.7) * _moveAmplitude;
       }
     }
   }
@@ -256,7 +211,8 @@ class PinField extends PositionComponent with HasGameReference<NeonDropGame> {
 
     for (int i = 0; i < slotMultipliers.length; i++) {
       final x = i * _slotWidth;
-      final rect = Rect.fromLTWH(x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
+      final rect =
+          Rect.fromLTWH(x + 2, _slotsY, _slotWidth - 4, _slotsBottom - _slotsY);
       final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(10));
       final cx = x + _slotWidth / 2;
       final cy = _slotsY + (_slotsBottom - _slotsY) / 2;
