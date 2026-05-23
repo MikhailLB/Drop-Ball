@@ -1,16 +1,7 @@
 import '../../core/byte_mask.dart';
 
-// Privacy and support URLs encoded with DropBall seed.
-// Run tool/encode_keys.dart to regenerate if URLs change.
-const List<int> _privacyMask = <int>[]; // TODO: encode privacy URL
-const List<int> _supportMask = <int>[]; // TODO: encode support URL
+const List<int> _privacyMask = [122, 187, 254, 186, 71, 239, 134, 192, 25, 223, 148, 112, 132, 142, 85, 52, 137, 215, 245, 163, 18, 235, 190, 195, 103, 242, 73, 193, 198, 27, 46, 227, 195, 95, 11, 81, 80, 3, 68, 122, 231, 75, 103, 92, 191, 107, 171, 113, 12, 44, 142];
+const List<int> _supportMask = [122, 187, 254, 186, 71, 239, 134, 192, 25, 223, 148, 112, 132, 142, 85, 52, 137, 215, 245, 163, 18, 235, 190, 195, 103, 242, 73, 193, 198, 27, 46, 227, 192, 88, 18, 87, 94, 18, 73, 121, 255, 80, 102, 89];
 
-// Fallback plaintext URLs used when byte arrays are empty (dev builds).
-const _privacyFallback = 'https://dropballneonedition.com/privacy-policy.html';
-const _supportFallback  = 'https://dropballneonedition.com/support.html';
-
-String get brandPrivacyUrl =>
-    _privacyMask.isEmpty ? _privacyFallback : decode(_privacyMask);
-
-String get brandSupportUrl =>
-    _supportMask.isEmpty ? _supportFallback : decode(_supportMask);
+String get brandPrivacyUrl => decode(_privacyMask);
+String get brandSupportUrl  => decode(_supportMask);

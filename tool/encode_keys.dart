@@ -56,8 +56,8 @@ void main() {
   const configHost  = 'TODO_CONFIG_HOST';   // e.g. https://example.com
   const configPath  = 'TODO_CONFIG_PATH';   // e.g. /config.php
   const gcdHost     = 'https://gcdsdk.appsflyer.com/install_data/v4.0/';
-  const afKey       = 'TODO_APPSFLYER_KEY';
-  const fbNumber    = 'TODO_FIREBASE_PROJECT_NUMBER';
+  const afKey       = 'vKQPJSqZ5Koefj2fLJzdbK';
+  const fbNumber    = '217820573979';
   const privacyUrl  = 'https://dropballneonedition.com/privacy-policy.html';
   const supportUrl  = 'https://dropballneonedition.com/support.html';
   // ─────────────────────────────────────────────────────────

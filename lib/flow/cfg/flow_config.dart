@@ -6,6 +6,7 @@ import 'page_links.dart';
 abstract final class FlowConfig {
   // ── iOS App Store numeric ID ──────────────────────────────
   static const String iosStoreId = '6771137735';
+  static const String teamId     = 'KZ8755Y86G';
 
   // ── Android/iOS bundle / package ID ──────────────────────
   static const String bundleId = 'com.neonfall.dropball';

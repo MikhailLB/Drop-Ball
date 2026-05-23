@@ -1,18 +1,13 @@
 import '../../core/byte_mask.dart';
 
-// ════════════════════════════════════════════════════════════
-// ⚠️  PLACEHOLDER — run tool/encode_keys.dart after credentials
-//     are provided to generate real byte arrays.
-// ════════════════════════════════════════════════════════════
-
-/// AppsFlyer Dev Key — empty until encoded.
+/// AppsFlyer Dev Key
 String appsflyerKey() {
-  const v = <int>[]; // TODO: encode AppsFlyer dev key
-  return v.isEmpty ? '' : decode(v);
+  const v = [100, 132, 219, 154, 126, 134, 216, 181, 72, 230, 148, 101, 128, 133, 11, 62, 171, 248, 224, 169, 21, 196];
+  return decode(v);
 }
 
-/// Firebase Project Number — empty until encoded.
+/// Firebase Project Number
 String firebaseProjectNum() {
-  const v = <int>[]; // TODO: encode Firebase project number
-  return v.isEmpty ? '' : decode(v);
+  const v = [32, 254, 189, 242, 6, 229, 156, 216, 78, 148, 204, 57];
+  return decode(v);
 }
