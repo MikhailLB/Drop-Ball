@@ -137,6 +137,7 @@ class _WebShellState extends State<WebShell> with WidgetsBindingObserver {
         _injectKeyboardFix();
         _injectAntiZoom();
         _injectMediaAutoplay();
+        _injectWindowOpenFix();
         // Dispatch synthetic resize events to force viewport recalculation
         // after immersive mode settles — cold-start push taps can cause the
         // site to bake in wrong dimensions before SystemUiMode applies.
@@ -325,6 +326,34 @@ class _WebShellState extends State<WebShell> with WidgetsBindingObserver {
   var s=document.createElement('style'); s.id='__dbAz';
   s.textContent='input,textarea,select,[contenteditable=true]{font-size:16px!important;}';
   (document.head||document.documentElement).appendChild(s);
+})();
+''');
+  }
+
+  /// Patch window.open() and target="_blank" links so they navigate inside
+  /// the WebView instead of spawning new windows (which WKWebView blocks,
+  /// causing -999 NSURLErrorCancelled and silent link failures on iOS).
+  void _injectWindowOpenFix() {
+    _wv.runJavaScript(r'''
+(function(){
+  if(window.__dbWo)return; window.__dbWo=true;
+  var _nativeOpen=window.open;
+  window.open=function(url,target,features){
+    if(url&&(url.startsWith('http://')||url.startsWith('https://'))){
+      window.location.href=url; return window;
+    }
+    return _nativeOpen?_nativeOpen.call(window,url,target,features):null;
+  };
+  document.addEventListener('click',function(e){
+    var el=e.target;
+    while(el&&el.tagName!=='A'){el=el.parentElement;}
+    if(el&&el.getAttribute('target')==='_blank'&&el.href&&
+       (el.href.startsWith('http://')||el.href.startsWith('https://'))){
+      e.preventDefault();
+      e.stopPropagation();
+      window.location.href=el.href;
+    }
+  },true);
 })();
 ''');
   }
