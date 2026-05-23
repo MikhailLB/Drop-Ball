@@ -18,7 +18,7 @@ if (file("google-services.json").exists()) {
 }
 
 android {
-    namespace = "com.gsteamgsgames.gravityrush"
+    namespace = "com.dropball.neonedition"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -42,7 +42,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.gsteamgsgames.gravityrush"
+        applicationId = "com.dropball.neonedition"
         minSdk = 30
         targetSdk = 35
         versionCode = flutter.versionCode
