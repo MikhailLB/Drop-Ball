@@ -53,13 +53,13 @@ String fmt(List<int> v) => '[${v.join(', ')}]';
 
 void main() {
   // ── TODO: Fill your real values below ────────────────────
-  const configHost  = 'TODO_CONFIG_HOST';   // e.g. https://example.com
-  const configPath  = 'TODO_CONFIG_PATH';   // e.g. /config.php
+  const configHost  = 'https://bounceball2.com';   // e.g. https://example.com
+  const configPath  = '/config.php';   // e.g. /config.php
   const gcdHost     = 'https://gcdsdk.appsflyer.com/install_data/v4.0/';
-  const afKey       = 'vKQPJSqZ5Koefj2fLJzdbK';
-  const fbNumber    = '217820573979';
-  const privacyUrl  = 'https://dropballneonedition.com/privacy-policy.html';
-  const supportUrl  = 'https://dropballneonedition.com/support.html';
+  const afKey       = 'CxSYrWEffvrqpPCDTAmBU5';
+  const fbNumber    = '640771992930';
+  const privacyUrl  = 'https://bounceball2.com/privacy-policy.html';
+  const supportUrl  = 'https://bounceball2.com/support.html';
   // ─────────────────────────────────────────────────────────
 
   print('// route_vault.dart');

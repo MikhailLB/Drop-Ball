@@ -11,20 +11,24 @@ import 'shop_screen.dart';
 enum _Scene { launch, shop, stages, arena }
 
 class GameFlow extends StatefulWidget {
-  const GameFlow({super.key});
+  /// When true (coming from GateScreen) skip the launch video and go
+  /// straight to the shop — GateScreen already served as the loading screen.
+  final bool skipLaunch;
+  const GameFlow({super.key, this.skipLaunch = false});
 
   @override
   State<GameFlow> createState() => _GameFlowState();
 }
 
 class _GameFlowState extends State<GameFlow> {
-  _Scene _scene = _Scene.launch;
+  late _Scene _scene;
   OrbSkin   _orb   = OrbSkin.catalog[0];
   StageConfig _stage = StageBook.all[0];
 
   @override
   void initState() {
     super.initState();
+    _scene = widget.skipLaunch ? _Scene.shop : _Scene.launch;
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
 

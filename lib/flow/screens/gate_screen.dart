@@ -314,7 +314,7 @@ class _GateScreenState extends State<GateScreen> {
     if (_navigated) return;
     _navigated = true;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const GameFlow()),
+      MaterialPageRoute(builder: (_) => const GameFlow(skipLaunch: true)),
     );
   }
 

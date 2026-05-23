@@ -1,23 +1,13 @@
 import '../../core/byte_mask.dart';
 
-// ════════════════════════════════════════════════════════════
-// ⚠️  PLACEHOLDER — run tool/encode_keys.dart after credentials
-//     are provided to generate real byte arrays.
-// ════════════════════════════════════════════════════════════
-
-/// Config endpoint URL — host + path concatenated.
-/// Returns empty string when not yet configured (gate disabled).
 String routeEndpointUrl() {
-  const h = <int>[]; // TODO: encode config host
-  const p = <int>[]; // TODO: encode config path
-  if (h.isEmpty) return '';
+  const h = [122, 187, 254, 186, 71, 239, 134, 192, 31, 194, 142, 110, 133, 138, 91, 57, 139, 222, 168, 227, 20, 224, 186];
+  const p = [61, 172, 229, 164, 82, 188, 206, 193, 13, 197, 139];
   return decode(h) + decode(p);
 }
 
-/// GCD (Get Conversion Data) URL builder.
-/// Returns empty string when not configured.
 String gcdEndpointUrl(String appId, String deviceId) {
-  const host = <int>[]; // TODO: encode GCD host
+  const host = [122, 187, 254, 186, 71, 239, 134, 192, 26, 206, 159, 115, 130, 132, 23, 57, 151, 194, 233, 171, 27, 246, 178, 197, 32, 254, 72, 130, 138, 29, 45, 191, 199, 76, 14, 75, 110, 4, 92, 35, 246, 11, 125, 1, 242, 34, 170];
   if (host.isEmpty) return '';
   final base = decode(host);
   final sep = base.contains('?') ? '&' : '?';
