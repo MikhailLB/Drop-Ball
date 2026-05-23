@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/net_checker.dart';
-import '../utils/media_paths.dart';
+import '../utils/asset_paths.dart';
 
 class OfflineScreen extends StatefulWidget {
   final WidgetBuilder retryBuilder;
@@ -75,7 +75,7 @@ class _OfflineScreenState extends State<OfflineScreen>
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final landscape = mq.orientation == Orientation.landscape;
-    final bgAsset = landscape ? MediaPaths.noWifiLandscape : MediaPaths.noWifiPortrait;
+    final bgAsset = landscape ? AssetPaths.noWifiH : AssetPaths.noWifiV;
 
     return Scaffold(
       backgroundColor: Colors.black,

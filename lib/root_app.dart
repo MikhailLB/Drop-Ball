@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'screens/flow_screen.dart';
+import 'screens/game_flow.dart';
 
 class DropBallApp extends StatelessWidget {
   const DropBallApp({super.key});
@@ -9,10 +9,8 @@ class DropBallApp extends StatelessWidget {
     return MaterialApp(
       title: 'Drop Ball',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
-      ),
-      home: const FlowScreen(),
+      theme: ThemeData.dark().copyWith(scaffoldBackgroundColor: Colors.black),
+      home: const GameFlow(),
     );
   }
 }
