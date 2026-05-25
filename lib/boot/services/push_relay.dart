@@ -62,7 +62,7 @@ class PushRelay {
         if (r.payload == null) return;
         try {
           final url = _extractUrl(jsonDecode(r.payload!) as Map<String, dynamic>);
-          if (url != null) onPushDestination?.call(url);
+          if (url != null) _routeUrl(url, source: 'tray-tap');
         } catch (_) {}
       },
     );
@@ -91,7 +91,12 @@ class PushRelay {
 
   void _onForeground(RemoteMessage msg) async {
     final n = msg.notification;
-    if (n == null) return;
+    if (n == null) {
+      // Data-only message in foreground — route URL directly
+      final url = _extractUrl(msg.data);
+      if (url != null) _routeUrl(url, source: 'fg-data');
+      return;
+    }
     final imgUrl = msg.notification?.android?.imageUrl;
     AndroidNotificationDetails? details;
     if (imgUrl != null && imgUrl.isNotEmpty) {
@@ -119,7 +124,19 @@ class PushRelay {
 
   void _onBgTap(RemoteMessage msg) {
     final url = _extractUrl(msg.data);
-    if (url != null) onPushDestination?.call(url);
+    if (url == null) return;
+    _routeUrl(url, source: 'bg-tap');
+  }
+
+  void _routeUrl(String url, {required String source}) {
+    final cb = onPushDestination;
+    if (cb != null) {
+      debugPrint('[DB.PR] route ($source) → live WebContainer');
+      cb(url);
+    } else {
+      debugPrint('[DB.PR] route ($source) → stash (no live listener)');
+      _cache.stashPushUrl(url);
+    }
   }
 
   Future<Uint8List?> _fetchImage(String url) async {

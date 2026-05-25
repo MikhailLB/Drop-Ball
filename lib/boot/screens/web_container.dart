@@ -37,7 +37,20 @@ class _WebContainerState extends State<WebContainer> with WidgetsBindingObserver
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState s) {
-    if (s == AppLifecycleState.resumed) _immersive();
+    if (s == AppLifecycleState.resumed) {
+      _immersive();
+      _drainStash();
+    }
+  }
+
+  Future<void> _drainStash() async {
+    final url = await widget.cache.consumePushUrl();
+    if (url != null && url.isNotEmpty && mounted) {
+      try {
+        final uri = Uri.parse(url);
+        if (uri.hasScheme) _wv.loadRequest(uri);
+      } catch (_) {}
+    }
   }
 
   @override
@@ -93,6 +106,8 @@ class _WebContainerState extends State<WebContainer> with WidgetsBindingObserver
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) _wv.loadRequest(Uri.parse(widget.url));
       });
+      // Drain any stashed push URL after WebView is mounted
+      Future.delayed(const Duration(milliseconds: 800), _drainStash);
     });
 
     widget.push.onPushDestination = (url) {
