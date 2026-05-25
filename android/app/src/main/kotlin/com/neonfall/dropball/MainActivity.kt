@@ -1,4 +1,4 @@
-package com.dropball.neonedition
+package com.neonfall.dropball
 
 import io.flutter.embedding.android.FlutterActivity
 

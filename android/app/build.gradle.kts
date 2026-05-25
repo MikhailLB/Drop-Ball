@@ -18,7 +18,7 @@ if (file("google-services.json").exists()) {
 }
 
 android {
-    namespace = "com.dropball.neonedition"
+    namespace = "com.neonfall.dropball"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -42,7 +42,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.dropball.neonedition"
+        applicationId = "com.neonfall.dropball"
         minSdk = 30
         targetSdk = 35
         versionCode = flutter.versionCode
