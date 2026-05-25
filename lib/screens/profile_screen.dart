@@ -1,17 +1,7 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Lightweight profile screen. Lets the player pick an avatar from the
-/// system Photo Library and edit a display name. The avatar file is
-/// copied to the app's Documents directory so it survives the picker's
-/// temp-cache cleanup, and its path is persisted in SharedPreferences.
-///
-/// On iOS the picker uses PHPicker under the hood, so no runtime
-/// permission prompt is shown to the user even though the app declares
-/// NSPhotoLibraryUsageDescription for the reviewer.
+/// Player profile — name edit only.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -20,14 +10,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const _avatarKey = 'gr.avatar_path';
   static const _nameKey = 'gr.display_name';
 
-  final ImagePicker _picker = ImagePicker();
   final TextEditingController _nameCtrl = TextEditingController();
-
-  String? _avatarPath;
-  bool _picking = false;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -36,91 +22,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final path = prefs.getString(_avatarKey);
-    final name = prefs.getString(_nameKey) ?? 'Player';
-    if (!mounted) return;
-    setState(() {
-      _avatarPath = (path != null && File(path).existsSync()) ? path : null;
-      _nameCtrl.text = name;
-    });
+    final p = await SharedPreferences.getInstance();
+    _nameCtrl.text = p.getString(_nameKey) ?? 'Player';
   }
 
-  Future<void> _pickAvatar() async {
-    if (_picking) return;
-    setState(() => _picking = true);
-    try {
-      final picked = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 85,
-        maxWidth: 1024,
-        maxHeight: 1024,
-      );
-      if (picked == null) return;
-
-      final docs = await getApplicationDocumentsDirectory();
-      final ext = picked.path.split('.').last.toLowerCase();
-      final safeExt = (ext.length <= 4) ? ext : 'jpg';
-      final dest = File(
-        '${docs.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.$safeExt',
-      );
-      await File(picked.path).copy(dest.path);
-
-      // Cleanup any previous avatar so Documents doesn't grow unbounded.
-      final prefs = await SharedPreferences.getInstance();
-      final old = prefs.getString(_avatarKey);
-      if (old != null && old != dest.path) {
-        try {
-          final f = File(old);
-          if (await f.exists()) await f.delete();
-        } catch (_) {}
-      }
-      await prefs.setString(_avatarKey, dest.path);
-
-      if (!mounted) return;
-      setState(() => _avatarPath = dest.path);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not load image: $e'),
-          backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _picking = false);
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _saving = true);
+    final p = await SharedPreferences.getInstance();
+    await p.setString(_nameKey, name);
+    if (mounted) {
+      setState(() => _saving = false);
+      Navigator.of(context).pop();
     }
-  }
-
-  Future<void> _removeAvatar() async {
-    final prefs = await SharedPreferences.getInstance();
-    final old = prefs.getString(_avatarKey);
-    if (old != null) {
-      try {
-        final f = File(old);
-        if (await f.exists()) await f.delete();
-      } catch (_) {}
-      await prefs.remove(_avatarKey);
-    }
-    if (!mounted) return;
-    setState(() => _avatarPath = null);
-  }
-
-  Future<void> _saveName() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = _nameCtrl.text.trim().isEmpty
-        ? 'Player'
-        : _nameCtrl.text.trim();
-    await prefs.setString(_nameKey, name);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Profile saved'),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 1),
-      ),
-    );
   }
 
   @override
@@ -132,150 +47,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A1A),
+      backgroundColor: const Color(0xFF08091A),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.cyanAccent,
         elevation: 0,
-        title: const Text(
-          'PROFILE',
-          style: TextStyle(
-            color: Colors.cyanAccent,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 4,
-          ),
-        ),
-        iconTheme: const IconThemeData(color: Colors.cyanAccent),
+        title: const Text('Profile',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        iconTheme: const IconThemeData(color: Colors.white70),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 8),
-              Center(child: _buildAvatar()),
-              const SizedBox(height: 18),
-              Center(
-                child: TextButton.icon(
-                  onPressed: _picking ? null : _pickAvatar,
-                  icon: const Icon(Icons.photo_library_outlined,
-                      color: Colors.cyanAccent),
-                  label: Text(
-                    _avatarPath == null ? 'CHOOSE AVATAR' : 'CHANGE AVATAR',
-                    style: const TextStyle(
-                      color: Colors.cyanAccent,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                    ),
-                  ),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Display name',
+                style: TextStyle(color: Colors.white54, fontSize: 13, letterSpacing: 1)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _nameCtrl,
+              maxLength: 24,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.07),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
                 ),
+                counterStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
               ),
-              if (_avatarPath != null)
-                Center(
-                  child: TextButton(
-                    onPressed: _removeAvatar,
-                    child: Text(
-                      'Remove',
-                      style: TextStyle(
-                        color: Colors.redAccent.withValues(alpha: 0.8),
-                        letterSpacing: 1,
-                      ),
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 28),
-              const Text(
-                'DISPLAY NAME',
-                style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                  letterSpacing: 3,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _nameCtrl,
-                maxLength: 20,
-                style: const TextStyle(color: Colors.white, fontSize: 18),
-                cursorColor: Colors.cyanAccent,
-                decoration: InputDecoration(
-                  filled: true,
-                  fillColor: Colors.white.withValues(alpha: 0.05),
-                  counterStyle: const TextStyle(color: Colors.white24),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.cyanAccent),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 14),
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _saveName,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.cyanAccent.withValues(alpha: 0.18),
-                  foregroundColor: Colors.cyanAccent,
-                  side: const BorderSide(color: Colors.cyanAccent, width: 2),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: const Color(0xFF00E5FF).withValues(alpha: 0.18),
+                  foregroundColor: const Color(0xFF00E5FF),
+                  side: const BorderSide(color: Color(0xFF00E5FF), width: 1.5),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                      borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
-                child: const Text(
-                  'SAVE',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    letterSpacing: 4,
-                  ),
-                ),
+                child: _saving
+                    ? const SizedBox(
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00E5FF)))
+                    : const Text('Save',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2)),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAvatar() {
-    final size = 140.0;
-    final hasImage = _avatarPath != null && File(_avatarPath!).existsSync();
-
-    return GestureDetector(
-      onTap: _picking ? null : _pickAvatar,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.cyanAccent, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.cyanAccent, blurRadius: 24),
+            ),
           ],
-          color: Colors.white.withValues(alpha: 0.04),
-          image: hasImage
-              ? DecorationImage(
-                  image: FileImage(File(_avatarPath!)),
-                  fit: BoxFit.cover,
-                )
-              : null,
         ),
-        child: hasImage
-            ? null
-            : Icon(
-                Icons.person,
-                size: size * 0.55,
-                color: Colors.cyanAccent.withValues(alpha: 0.6),
-              ),
       ),
     );
   }

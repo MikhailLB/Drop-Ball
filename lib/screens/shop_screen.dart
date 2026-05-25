@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:math' show sin, cos, pi;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +19,6 @@ class _ShopScreenState extends State<ShopScreen>
   int _sel = 0;
   int _wallet = 0;
   Set<String> _owned = {'frost'};
-  String? _avatarPath;
 
   late AnimationController _orbit;   // rotating ring around hero
   late AnimationController _pulse;   // PLAY button pulse
@@ -40,14 +38,12 @@ class _ShopScreenState extends State<ShopScreen>
 
   Future<void> _loadPrefs() async {
     final p = await SharedPreferences.getInstance();
-    final av = p.getString('gr.avatar_path');
     setState(() {
       _wallet = p.getInt('db_wallet') ?? 0;
       _owned  = (p.getString('owned_orbs') ?? 'frost').split(',').toSet();
       final saved = p.getString('active_orb') ?? 'frost';
       _sel = OrbSkin.catalog.indexWhere((s) => s.id == saved).clamp(0, OrbSkin.catalog.length - 1);
       if (!_owned.contains(OrbSkin.catalog[_sel].id)) _sel = 0;
-      _avatarPath = (av != null && File(av).existsSync()) ? av : null;
     });
   }
 
@@ -206,14 +202,9 @@ class _ShopScreenState extends State<ShopScreen>
               shape: BoxShape.circle,
               border: Border.all(
                 color: skin.glowColor.withValues(alpha: 0.55), width: 2),
-              image: (_avatarPath != null)
-                  ? DecorationImage(image: FileImage(File(_avatarPath!)), fit: BoxFit.cover)
-                  : null,
               color: Colors.white.withValues(alpha: 0.06),
             ),
-            child: _avatarPath == null
-                ? const Icon(Icons.person_outline_rounded, size: 22, color: Colors.white60)
-                : null,
+            child: const Icon(Icons.person_outline_rounded, size: 22, color: Colors.white60),
           ),
         ),
       ]),
@@ -415,7 +406,7 @@ class _ShopScreenState extends State<ShopScreen>
   }
 
   Widget _link(String lbl, String url) => GestureDetector(
-    onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+    onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView),
     child: Text(lbl, style: TextStyle(
       color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 1,
     )),
