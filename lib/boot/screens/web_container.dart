@@ -27,7 +27,7 @@ class WebContainer extends StatefulWidget {
 
 class _WebContainerState extends State<WebContainer> with WidgetsBindingObserver {
   late final WebViewController _wv;
-  bool _loading = true;
+  bool _loading = false;
   StreamSubscription<List<ConnectivityResult>>? _connSub;
   bool _offlineRouted = false;
   String? _lastUrl;

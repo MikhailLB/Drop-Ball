@@ -90,10 +90,19 @@ class PushRelay {
   }
 
   void _onForeground(RemoteMessage msg) async {
+    // If WebContainer is live, load URL directly — DO NOT show a heads-up banner.
+    // On Samsung, showing a heads-up notification while in immersive mode causes
+    // the Activity to briefly stop (surface destroyed → black screen).
+    final url = _extractUrl(msg.data);
+    if (url != null && onPushDestination != null) {
+      debugPrint('[DB.PR] fg: WebContainer live → load directly, skip banner');
+      onPushDestination!(url);
+      return;
+    }
+
     final n = msg.notification;
     if (n == null) {
-      // Data-only message in foreground — route URL directly
-      final url = _extractUrl(msg.data);
+      // Data-only message, no live WebContainer
       if (url != null) _routeUrl(url, source: 'fg-data');
       return;
     }
