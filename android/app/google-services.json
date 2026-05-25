@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "713976457990",
+    "project_id": "dropball-adnroid",
+    "storage_bucket": "dropball-adnroid.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:713976457990:android:6b94f09ab033121950cc87",
+        "android_client_info": {
+          "package_name": "com.neonfall.dropball"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgFEFovGtkmupE1-VdThTsdwFpMZuksmU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
