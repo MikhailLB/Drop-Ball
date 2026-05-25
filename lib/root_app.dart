@@ -7,7 +7,7 @@ class DropBallApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DropBall: Neon Edition',
+      title: 'DropBall',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: Colors.black,
