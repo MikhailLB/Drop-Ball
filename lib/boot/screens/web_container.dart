@@ -193,11 +193,13 @@ class _WebContainerState extends State<WebContainer> with WidgetsBindingObserver
       child: Scaffold(
         backgroundColor: Colors.black,
         resizeToAvoidBottomInset: false,
-        body: Stack(fit: StackFit.expand, children: [
-          WebViewWidget(controller: _wv),
-          if (_loading) Container(color: Colors.black.withValues(alpha: 0.5),
-            child: const Center(child: CircularProgressIndicator(color: Color(0xFF00E5FF)))),
-        ]),
+        body: SafeArea(
+          child: Stack(fit: StackFit.expand, children: [
+            WebViewWidget(controller: _wv),
+            if (_loading) Container(color: Colors.black.withValues(alpha: 0.5),
+              child: const Center(child: CircularProgressIndicator(color: Color(0xFF00E5FF)))),
+          ]),
+        ),
       ),
     );
   }
