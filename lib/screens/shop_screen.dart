@@ -1,9 +1,9 @@
 import 'dart:math' show sin, cos, pi;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../config/app_config.dart';
 import '../models/orb_skin.dart';
+import 'inner_browser.dart';
 import 'profile_screen.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -406,7 +406,9 @@ class _ShopScreenState extends State<ShopScreen>
   }
 
   Widget _link(String lbl, String url) => GestureDetector(
-    onTap: () => launchUrl(Uri.parse(url), mode: LaunchMode.inAppBrowserView),
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => InnerBrowser(title: lbl, url: url)),
+    ),
     child: Text(lbl, style: TextStyle(
       color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 1,
     )),
