@@ -55,3 +55,8 @@ android/app/upload-keystore.jks
 **/ios/Pods/
 **/ios/.symlinks/
 **/ios/Flutter/ephemeral/
+
+# Android signing
+android/key.properties
+android/app/*.jks
+android/app/*.keystore

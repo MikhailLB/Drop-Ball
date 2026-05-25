@@ -1,7 +1,7 @@
 name: drop_ball
 description: "DropBall: Neon Edition — elemental sphere drop game with levels."
 publish_to: 'none'
-version: 1.0.2+20
+version: 1.0.0+1
 
 environment:
   sdk: ^3.11.4
