@@ -1,7 +1,7 @@
 name: drop_ball
 description: "DropBall: Neon Edition — an elemental orb logic puzzle."
 publish_to: 'none'
-version: 1.1.0+21
+version: 1.0.3+22
 
 environment:
   sdk: ^3.11.4
