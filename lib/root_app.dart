@@ -10,7 +10,7 @@ class DropBallApp extends StatelessWidget {
       title: 'DropBall: Neon Edition',
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor: const Color(0xFF05030E),
       ),
       home: const GameFlow(),
     );

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:video_player/video_player.dart';
-import '../utils/asset_paths.dart';
 
+import '../services/progress_store.dart';
+import '../utils/asset_paths.dart';
+import '../widgets/aurora_background.dart';
+
+/// Lightweight splash: loads progress, precaches orb art, then continues.
+/// No video, no network — just a self-contained animated intro.
 class LaunchScreen extends StatefulWidget {
   final VoidCallback onReady;
   const LaunchScreen({super.key, required this.onReady});
@@ -11,117 +14,107 @@ class LaunchScreen extends StatefulWidget {
   State<LaunchScreen> createState() => _LaunchScreenState();
 }
 
-class _LaunchScreenState extends State<LaunchScreen> {
-  int _bar = 0;
+class _LaunchScreenState extends State<LaunchScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _intro;
+  double _progress = 0;
   bool _started = false;
-  VideoPlayerController? _vid;
-  bool _vidReady = false;
-  Orientation? _lastOri;
-
-  static const _bars = [
-    AssetPaths.barEmpty,
-    AssetPaths.barHalf,
-    AssetPaths.barAlmost,
-    AssetPaths.barFull,
-  ];
 
   @override
   void initState() {
     super.initState();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp, DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft, DeviceOrientation.landscapeRight,
-    ]);
+    _intro = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..forward();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_started) { _started = true; _initVideo(MediaQuery.of(context).orientation); }
+    if (!_started) {
+      _started = true;
+      _boot();
+    }
   }
 
-  Future<void> _initVideo(Orientation ori) async {
-    _lastOri = ori;
-    final path = ori == Orientation.landscape ? AssetPaths.videoLandscape : AssetPaths.videoPortrait;
-    final ctrl = VideoPlayerController.asset(path);
-    await ctrl.initialize();
-    ctrl.setLooping(true); ctrl.setVolume(0); ctrl.play();
-    if (!mounted) { ctrl.dispose(); return; }
-    final old = _vid;
-    setState(() { _vid = ctrl; _vidReady = true; });
-    await old?.dispose();
-    _preload();
-  }
+  Future<void> _boot() async {
+    await ProgressStore.instance.load();
 
-  Future<void> _swapVideo(Orientation ori) async {
-    _lastOri = ori;
-    final path = ori == Orientation.landscape ? AssetPaths.videoLandscape : AssetPaths.videoPortrait;
-    final ctrl = VideoPlayerController.asset(path);
-    await ctrl.initialize();
-    ctrl.setLooping(true); ctrl.setVolume(0); ctrl.play();
-    if (!mounted) { ctrl.dispose(); return; }
-    final old = _vid;
-    setState(() { _vid = ctrl; _vidReady = true; });
-    await old?.dispose();
-  }
-
-  Future<void> _preload() async {
-    final imgs = AssetPaths.preloadImages;
-    for (int i = 0; i < imgs.length; i++) {
+    final assets = AssetPaths.preload;
+    for (var i = 0; i < assets.length; i++) {
       if (!mounted) return;
-      try { await precacheImage(AssetImage(imgs[i]), context); } catch (_) {}
-      final p = (i + 1) / imgs.length;
-      final ns = p < 0.30 ? 0 : p < 0.60 ? 1 : p < 0.85 ? 2 : 3;
-      if (ns != _bar && mounted) setState(() => _bar = ns);
+      try {
+        await precacheImage(AssetImage(assets[i]), context);
+      } catch (_) {}
+      if (mounted) setState(() => _progress = (i + 1) / assets.length);
     }
-    if (mounted) {
-      setState(() => _bar = 3);
-      await Future.delayed(const Duration(milliseconds: 650));
-      if (mounted) {
-        await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-        widget.onReady();
-      }
-    }
+
+    await Future.delayed(const Duration(milliseconds: 400));
+    if (mounted) widget.onReady();
   }
 
   @override
-  void dispose() { _vid?.dispose(); super.dispose(); }
+  void dispose() {
+    _intro.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return OrientationBuilder(builder: (ctx, ori) {
-      if (_started && ori != _lastOri) {
-        _lastOri = ori;
-        WidgetsBinding.instance.addPostFrameCallback((_) { if (mounted) _swapVideo(ori); });
-      }
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(fit: StackFit.expand, children: [
-          if (_vidReady && _vid != null)
-            SizedBox.expand(child: FittedBox(fit: BoxFit.cover, child: SizedBox(
-              width: _vid!.value.size.width, height: _vid!.value.size.height,
-              child: VideoPlayer(_vid!),
-            )))
-          else
-            const DecoratedBox(decoration: BoxDecoration(gradient: RadialGradient(
-              center: Alignment.center, radius: 1.1,
-              colors: [Color(0xFF17134A), Color(0xFF070714), Colors.black],
-            ))),
-          DecoratedBox(decoration: BoxDecoration(gradient: LinearGradient(
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-            colors: [Colors.transparent, Colors.black.withValues(alpha: 0.5)],
-            stops: const [0.6, 1.0],
-          ))),
-          Positioned(bottom: 30, left: 0, right: 0,
-            child: Center(child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              transitionBuilder: (c, a) => FadeTransition(opacity: a, child: c),
-              child: Image.asset(_bars[_bar], key: ValueKey(_bar), width: 260,
-                errorBuilder: (c2, e2, s2) => const SizedBox(width: 260, height: 20)),
-            )),
-          ),
-        ]),
-      );
-    });
+    return AuroraBackground(
+      tint: const Color(0xFF4FC3F7),
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Center(
+              child: FadeTransition(
+                opacity: _intro,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.85, end: 1.0).animate(
+                    CurvedAnimation(parent: _intro, curve: Curves.easeOutBack),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 36),
+                    child: Image.asset(AssetPaths.logoTitle, fit: BoxFit.contain),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: 48,
+              right: 48,
+              bottom: 56,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: LinearProgressIndicator(
+                      value: _progress,
+                      minHeight: 5,
+                      backgroundColor: Colors.white.withValues(alpha: 0.08),
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        Color(0xFF4FC3F7),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'LOADING',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 11,
+                      letterSpacing: 6,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
